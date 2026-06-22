@@ -118,6 +118,9 @@ use wasmtime_environ::ModuleTranslation as WasmtimeModuleTranslation;
 use wit_component::*;
 use wit_parser::*;
 
+pub use anyhow;
+pub use wasm_runtime_layer;
+
 pub use crate::func::Func;
 pub use crate::func::*;
 pub use crate::identifier::PackageName;
