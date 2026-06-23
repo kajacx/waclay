@@ -1233,10 +1233,10 @@ impl<P: ComponentList, R: ComponentList> TypedFunc<P, R> {
                     params_results[..P::LEN].iter().cloned(),
                     params_results[P::LEN..].iter().cloned(),
                 ),
-                move |ctx, args, res| {
-                    let p = P::from_values(args)?;
-                    let r = f(ctx, p)?;
-                    r.into_values(res)
+                move |mut ctx, args, res| {
+                    let p = P::from_values(args, ctx.as_context())?;
+                    let r = f(ctx.as_context_mut(), p)?;
+                    r.into_values(res, ctx)
                 },
             ),
             data: PhantomData,
@@ -1247,12 +1247,12 @@ impl<P: ComponentList, R: ComponentList> TypedFunc<P, R> {
     ///
     /// - The store did not match the original.
     /// - A trap occurred.
-    pub fn call(&self, ctx: impl AsContextMut, params: P) -> Result<R> {
+    pub fn call(&self, mut ctx: impl AsContextMut, params: P) -> Result<R> {
         let mut params_results = vec![Value::Bool(false); P::LEN + R::LEN];
-        params.into_values(&mut params_results[0..P::LEN])?;
+        params.into_values(&mut params_results[0..P::LEN], ctx.as_context_mut())?;
         let (params, results) = params_results.split_at_mut(P::LEN);
-        self.inner.call(ctx, params, results)?;
-        R::from_values(results)
+        self.inner.call(ctx.as_context_mut(), params, results)?;
+        R::from_values(results, ctx)
     }
 
     /// Gets the underlying, untyped function.

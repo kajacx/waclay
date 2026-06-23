@@ -5,9 +5,13 @@
 
 use anyhow::*;
 use waclay::*;
-use wasm_runtime_layer::backend;
+use wasm_runtime_layer::{backend};
+
 
 // ========== Type Definitions ==========
+
+
+
 
 #[derive(Debug, Clone)]
 pub struct ComplexData {
@@ -27,24 +31,14 @@ impl ComponentType for ComplexData {
                     ("id", ValueType::U32),
                     ("name", ValueType::String),
                     ("values", ValueType::List(ListType::new(ValueType::F64))),
-                    (
-                        "metadata",
-                        ValueType::Option(OptionType::new(ValueType::String)),
-                    ),
-                    (
-                        "status",
-                        ValueType::Result(ResultType::new(
-                            Some(ValueType::String),
-                            Some(ValueType::String),
-                        )),
-                    ),
+                    ("metadata", ValueType::Option(OptionType::new(ValueType::String))),
+                    ("status", ValueType::Result(ResultType::new(Some(ValueType::String), Some(ValueType::String)))),
                 ],
-            )
-            .unwrap(),
+            ).unwrap(),
         )
     }
 
-    fn from_value(value: &Value) -> Result<Self> {
+    fn from_value(value: &Value, #[allow(unused)] ctx: impl AsContext) -> Result<Self> {
         if let Value::Record(record) = value {
             let id = record
                 .field("id")
@@ -62,19 +56,11 @@ impl ComponentType for ComplexData {
                 .field("status")
                 .ok_or_else(|| anyhow!("Missing 'status' field"))?;
 
-            let id = if let Value::U32(x) = id {
-                x
-            } else {
-                bail!("Expected u32")
-            };
-            let name = if let Value::String(s) = name {
-                s.to_string()
-            } else {
-                bail!("Expected string")
-            };
-            let values = Vec::<f64>::from_value(&values)?;
-            let metadata = Option::<String>::from_value(&metadata)?;
-            let status = Result::<String, String>::from_value(&status)?;
+            let id = if let Value::U32(x) = id { x } else { bail!("Expected u32") };
+            let name = if let Value::String(s) = name { s.to_string() } else { bail!("Expected string") };
+            let values = Vec::<f64>::from_value(&values, ctx.as_context())?;
+            let metadata = Option::<String>::from_value(&metadata, ctx.as_context())?;
+            let status = Result::<String, String>::from_value(&status, ctx.as_context())?;
 
             Ok(ComplexData {
                 id,
@@ -88,7 +74,7 @@ impl ComponentType for ComplexData {
         }
     }
 
-    fn into_value(self) -> Result<Value> {
+    fn into_value(self, #[allow(unused)] mut ctx: impl AsContextMut) -> Result<Value> {
         let record = Record::new(
             RecordType::new(
                 None,
@@ -96,26 +82,16 @@ impl ComponentType for ComplexData {
                     ("id", ValueType::U32),
                     ("name", ValueType::String),
                     ("values", ValueType::List(ListType::new(ValueType::F64))),
-                    (
-                        "metadata",
-                        ValueType::Option(OptionType::new(ValueType::String)),
-                    ),
-                    (
-                        "status",
-                        ValueType::Result(ResultType::new(
-                            Some(ValueType::String),
-                            Some(ValueType::String),
-                        )),
-                    ),
+                    ("metadata", ValueType::Option(OptionType::new(ValueType::String))),
+                    ("status", ValueType::Result(ResultType::new(Some(ValueType::String), Some(ValueType::String)))),
                 ],
-            )
-            .unwrap(),
+            ).unwrap(),
             [
                 ("id", Value::U32(self.id)),
                 ("name", Value::String(self.name.into())),
-                ("values", self.values.into_value()?),
-                ("metadata", self.metadata.into_value()?),
-                ("status", self.status.into_value()?),
+                ("values", self.values.into_value(ctx.as_context_mut())?),
+                ("metadata", self.metadata.into_value(ctx.as_context_mut())?),
+                ("status", self.status.into_value(ctx.as_context_mut())?),
             ],
         )?;
         Ok(Value::Record(record))
@@ -146,4 +122,6 @@ pub mod exports_exports {
             .ok_or_else(|| anyhow!("Function 'get-complex-data' not found"))?
             .typed::<(), ComplexData>()
     }
+
 }
+

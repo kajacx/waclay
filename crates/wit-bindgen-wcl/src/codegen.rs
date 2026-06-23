@@ -122,7 +122,7 @@ fn generate_record_component_type(
     // from_value() method
     writeln!(
         output,
-        "    fn from_value(value: &Value) -> Result<Self> {{"
+        "    fn from_value(value: &Value, #[allow(unused)] ctx: impl AsContext) -> Result<Self> {{"
     )?;
     writeln!(output, "        if let Value::Record(record) = value {{")?;
 
@@ -161,7 +161,10 @@ fn generate_record_component_type(
     writeln!(output)?;
 
     // into_value() method
-    writeln!(output, "    fn into_value(self) -> Result<Value> {{")?;
+    writeln!(
+        output,
+        "    fn into_value(self, #[allow(unused)] mut ctx: impl AsContextMut) -> Result<Value> {{"
+    )?;
     writeln!(output, "        let record = Record::new(")?;
     writeln!(output, "            RecordType::new(")?;
     writeln!(output, "                None,")?;
@@ -266,7 +269,7 @@ fn generate_variant_component_type(
     // from_value() method
     writeln!(
         output,
-        "    fn from_value(value: &Value) -> Result<Self> {{"
+        "    fn from_value(value: &Value, #[allow(unused)] ctx: impl AsContext) -> Result<Self> {{"
     )?;
     writeln!(output, "        if let Value::Variant(variant) = value {{")?;
     writeln!(
@@ -333,7 +336,10 @@ fn generate_variant_component_type(
     writeln!(output)?;
 
     // into_value() method
-    writeln!(output, "    fn into_value(self) -> Result<Value> {{")?;
+    writeln!(
+        output,
+        "    fn into_value(self, #[allow(unused)] mut ctx: impl AsContextMut) -> Result<Value> {{"
+    )?;
     writeln!(output, "        let variant_type = VariantType::new(")?;
     writeln!(output, "            None,")?;
     writeln!(output, "            [")?;
@@ -423,7 +429,7 @@ fn generate_enum_type(rust_name: &str, enum_: &Enum, output: &mut String) -> Res
     // from_value() method
     writeln!(
         output,
-        "    fn from_value(value: &Value) -> Result<Self> {{"
+        "    fn from_value(value: &Value, #[allow(unused)] ctx: impl AsContext) -> Result<Self> {{"
     )?;
     writeln!(output, "        if let Value::Enum(enum_val) = value {{")?;
     writeln!(
@@ -451,7 +457,10 @@ fn generate_enum_type(rust_name: &str, enum_: &Enum, output: &mut String) -> Res
     writeln!(output)?;
 
     // into_value() method
-    writeln!(output, "    fn into_value(self) -> Result<Value> {{")?;
+    writeln!(
+        output,
+        "    fn into_value(self, #[allow(unused)] mut ctx: impl AsContextMut) -> Result<Value> {{"
+    )?;
     writeln!(output, "        let enum_type = EnumType::new(None, [")?;
     for case in &enum_.cases {
         writeln!(output, "            \"{}\",", case.name)?;
@@ -516,7 +525,7 @@ fn generate_flags_type(rust_name: &str, flags: &Flags, output: &mut String) -> R
     // from_value() method
     writeln!(
         output,
-        "    fn from_value(value: &Value) -> Result<Self> {{"
+        "    fn from_value(value: &Value, #[allow(unused)] ctx: impl AsContext) -> Result<Self> {{"
     )?;
     writeln!(output, "        if let Value::Flags(flags_val) = value {{")?;
     writeln!(
@@ -543,7 +552,10 @@ fn generate_flags_type(rust_name: &str, flags: &Flags, output: &mut String) -> R
     writeln!(output)?;
 
     // into_value() method
-    writeln!(output, "    fn into_value(self) -> Result<Value> {{")?;
+    writeln!(
+        output,
+        "    fn into_value(self, #[allow(unused)] mut ctx: impl AsContextMut) -> Result<Value> {{"
+    )?;
     writeln!(output, "        let flags_type = FlagsType::new(None, [")?;
     for flag in &flags.flags {
         writeln!(output, "            \"{}\",", flag.name)?;
@@ -1393,7 +1405,7 @@ fn value_to_rust(resolve: &Resolve, value_expr: &str, ty: &Type) -> String {
                 let value_ref = format!("&{}", value_expr);
 
                 return format!(
-                    "Result::<{}, {}>::from_value({})?",
+                    "Result::<{}, {}>::from_value({}, ctx.as_context())?",
                     ok_ty, err_ty, value_ref
                 );
             }
@@ -1410,13 +1422,16 @@ fn value_to_rust(resolve: &Resolve, value_expr: &str, ty: &Type) -> String {
                     // Add turbofish :: before the generic parameters for other types
                     rust_ty.replace("<", "::<")
                 };
-                return format!("{}::from_value({})?", ty_for_call, value_ref);
+                return format!(
+                    "{}::from_value({}, ctx.as_context())?",
+                    ty_for_call, value_ref
+                );
             }
             _ => {
                 // Named types (records, variants, enums, etc.)
                 let rust_ty = type_to_rust_type(resolve, ty);
                 let value_ref = format!("&{}", value_expr);
-                return format!("{}::from_value({})?", rust_ty, value_ref);
+                return format!("{}::from_value({}, ctx.as_context())?", rust_ty, value_ref);
             }
         }
     }
@@ -1476,7 +1491,7 @@ fn field_to_value(_resolve: &Resolve, field_expr: &str, ty: &Type) -> String {
         Type::Char => format!("Value::Char({})", field_expr),
         Type::String => format!("Value::String({}.into())", field_expr),
         Type::Id(_) => {
-            format!("{}.into_value()?", field_expr)
+            format!("{}.into_value(ctx.as_context_mut())?", field_expr)
         }
     }
 }

@@ -13,7 +13,7 @@ use serde::*;
 use crate::values::ComponentType;
 use crate::TypeIdentifier;
 use crate::{require_matches, UnaryComponentType};
-use crate::{AsContextMut, ComponentInner, StoreContextMut};
+use crate::{AsContext, AsContextMut, ComponentInner, StoreContextMut};
 
 /// Represents a component model interface type.
 #[derive(Clone, Debug, Hash, PartialEq, Eq)]
@@ -1225,10 +1225,11 @@ pub trait ComponentList: 'static + Sized {
 
     /// Attempts to convert this component list into values, storing them
     /// in the provided slice.
-    fn into_values(self, values: &mut [crate::values::Value]) -> Result<()>;
+    fn into_values(self, values: &mut [crate::values::Value], ctx: impl AsContextMut)
+        -> Result<()>;
 
     /// Attempts to convert a list of values into a component list of this type.
-    fn from_values(values: &[crate::values::Value]) -> Result<Self>;
+    fn from_values(values: &[crate::values::Value], ctx: impl AsContext) -> Result<Self>;
 }
 
 impl ComponentList for () {
@@ -1236,11 +1237,15 @@ impl ComponentList for () {
 
     fn into_tys(_types: &mut [ValueType]) {}
 
-    fn from_values(_values: &[crate::values::Value]) -> Result<Self> {
+    fn into_values(
+        self,
+        _values: &mut [crate::values::Value],
+        _ctx: impl AsContextMut,
+    ) -> Result<()> {
         Ok(())
     }
 
-    fn into_values(self, _values: &mut [crate::values::Value]) -> Result<()> {
+    fn from_values(_values: &[crate::values::Value], _ctx: impl AsContext) -> Result<Self> {
         Ok(())
     }
 }
@@ -1253,15 +1258,19 @@ impl<T: UnaryComponentType> ComponentList for T {
         types[0] = T::ty();
     }
 
-    fn into_values(self, values: &mut [crate::values::Value]) -> Result<()> {
+    fn into_values(
+        self,
+        values: &mut [crate::values::Value],
+        ctx: impl AsContextMut,
+    ) -> Result<()> {
         assert!(values.len() == 1);
-        values[0] = T::into_value(self)?;
+        values[0] = T::into_value(self, ctx)?;
         Ok(())
     }
 
-    fn from_values(values: &[crate::values::Value]) -> Result<Self> {
+    fn from_values(values: &[crate::values::Value], ctx: impl AsContext) -> Result<Self> {
         assert!(values.len() == 1);
-        T::from_value(&values[0])
+        T::from_value(&values[0], ctx)
     }
 }
 
@@ -1286,17 +1295,17 @@ macro_rules! impl_component_list {
             }
 
             #[allow(warnings)]
-            fn into_values(self, values: &mut [crate::values::Value]) -> Result<()> {
+            fn into_values(self, values: &mut [crate::values::Value], mut ctx: impl AsContextMut) -> Result<()> {
                 let ($($extra,)+) = self;
                 let mut counter = 0;
-                $(values[{ let res = counter; counter += 1; res }] = $extra.into_value()?;)+
+                $(values[{ let res = counter; counter += 1; res }] = $extra.into_value(ctx.as_context_mut())?;)+
                 Ok(())
             }
 
             #[allow(warnings)]
-            fn from_values(values: &[crate::values::Value]) -> Result<Self> {
+            fn from_values(values: &[crate::values::Value], ctx: impl AsContext) -> Result<Self> {
                 let mut counter = 0;
-                Ok(($($name::from_value(&values[{ let res = counter; counter += 1; res }])?, )+))
+                Ok(($($name::from_value(&values[{ let res = counter; counter += 1; res }], ctx.as_context())?, )+))
             }
         }
     };

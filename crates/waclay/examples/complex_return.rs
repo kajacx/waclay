@@ -39,7 +39,7 @@ impl ComponentType for ComplexData {
         )
     }
 
-    fn from_value(value: &Value) -> Result<Self> {
+    fn from_value(value: &Value, ctx: impl AsContext) -> Result<Self> {
         if let Value::Record(record) = value {
             let id = record
                 .field("id")
@@ -67,9 +67,9 @@ impl ComponentType for ComplexData {
             } else {
                 bail!("'name' field is not String")
             };
-            let values = Vec::<f64>::from_value(&values)?;
-            let metadata = Option::<String>::from_value(&metadata)?;
-            let status = Result::<String, String>::from_value(&status)?;
+            let values = Vec::<f64>::from_value(&values, ctx.as_context())?;
+            let metadata = Option::<String>::from_value(&metadata, ctx.as_context())?;
+            let status = Result::<String, String>::from_value(&status, ctx.as_context())?;
 
             Ok(ComplexData {
                 id,
@@ -83,7 +83,7 @@ impl ComponentType for ComplexData {
         }
     }
 
-    fn into_value(self) -> Result<Value> {
+    fn into_value(self, mut ctx: impl AsContextMut) -> Result<Value> {
         let record = Record::new(
             RecordType::new(
                 None,
@@ -108,9 +108,9 @@ impl ComponentType for ComplexData {
             [
                 ("id", Value::U32(self.id)),
                 ("name", Value::String(self.name.into())),
-                ("values", self.values.into_value()?),
-                ("metadata", self.metadata.into_value()?),
-                ("status", self.status.into_value()?),
+                ("values", self.values.into_value(ctx.as_context_mut())?),
+                ("metadata", self.metadata.into_value(ctx.as_context_mut())?),
+                ("status", self.status.into_value(ctx.as_context_mut())?),
             ],
         )?;
         Ok(Value::Record(record))
@@ -184,7 +184,8 @@ pub fn main() {
         }
         if let Some(Value::List(values_list)) = record.field("values") {
             let values: Vec<f64> =
-                Vec::<f64>::from_value(&Value::List(values_list.clone())).unwrap_or_default();
+                Vec::<f64>::from_value(&Value::List(values_list.clone()), &store)
+                    .unwrap_or_default();
             println!("  └ values: {:?}", values);
         }
         if let Some(Value::Option(opt)) = record.field("metadata") {

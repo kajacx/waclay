@@ -5,7 +5,8 @@
 
 use anyhow::*;
 use waclay::*;
-use wasm_runtime_layer::backend;
+use wasm_runtime_layer::{backend};
+
 
 // ========== Type Definitions ==========
 
@@ -22,16 +23,18 @@ pub enum HttpMethod {
 
 impl ComponentType for HttpMethod {
     fn ty() -> ValueType {
-        ValueType::Enum(
-            EnumType::new(
-                None,
-                ["get", "post", "put", "delete", "patch", "head", "options"],
-            )
-            .unwrap(),
-        )
+        ValueType::Enum(EnumType::new(None, [
+            "get",
+            "post",
+            "put",
+            "delete",
+            "patch",
+            "head",
+            "options",
+        ]).unwrap())
     }
 
-    fn from_value(value: &Value) -> Result<Self> {
+    fn from_value(value: &Value, #[allow(unused)] ctx: impl AsContext) -> Result<Self> {
         if let Value::Enum(enum_val) = value {
             let discriminant = enum_val.discriminant();
             match discriminant {
@@ -49,12 +52,16 @@ impl ComponentType for HttpMethod {
         }
     }
 
-    fn into_value(self) -> Result<Value> {
-        let enum_type = EnumType::new(
-            None,
-            ["get", "post", "put", "delete", "patch", "head", "options"],
-        )
-        .unwrap();
+    fn into_value(self, #[allow(unused)] mut ctx: impl AsContextMut) -> Result<Value> {
+        let enum_type = EnumType::new(None, [
+            "get",
+            "post",
+            "put",
+            "delete",
+            "patch",
+            "head",
+            "options",
+        ]).unwrap();
 
         let discriminant = match self {
             HttpMethod::Get => 0,
@@ -83,13 +90,15 @@ impl ComponentType for HttpHeader {
         ValueType::Record(
             RecordType::new(
                 None,
-                [("name", ValueType::String), ("value", ValueType::String)],
-            )
-            .unwrap(),
+                [
+                    ("name", ValueType::String),
+                    ("value", ValueType::String),
+                ],
+            ).unwrap(),
         )
     }
 
-    fn from_value(value: &Value) -> Result<Self> {
+    fn from_value(value: &Value, #[allow(unused)] ctx: impl AsContext) -> Result<Self> {
         if let Value::Record(record) = value {
             let name = record
                 .field("name")
@@ -98,30 +107,27 @@ impl ComponentType for HttpHeader {
                 .field("value")
                 .ok_or_else(|| anyhow!("Missing 'value' field"))?;
 
-            let name = if let Value::String(s) = name {
-                s.to_string()
-            } else {
-                bail!("Expected string")
-            };
-            let value = if let Value::String(s) = value {
-                s.to_string()
-            } else {
-                bail!("Expected string")
-            };
+            let name = if let Value::String(s) = name { s.to_string() } else { bail!("Expected string") };
+            let value = if let Value::String(s) = value { s.to_string() } else { bail!("Expected string") };
 
-            Ok(HttpHeader { name, value })
+            Ok(HttpHeader {
+                name,
+                value,
+            })
         } else {
             bail!("Expected Record value")
         }
     }
 
-    fn into_value(self) -> Result<Value> {
+    fn into_value(self, #[allow(unused)] mut ctx: impl AsContextMut) -> Result<Value> {
         let record = Record::new(
             RecordType::new(
                 None,
-                [("name", ValueType::String), ("value", ValueType::String)],
-            )
-            .unwrap(),
+                [
+                    ("name", ValueType::String),
+                    ("value", ValueType::String),
+                ],
+            ).unwrap(),
             [
                 ("name", Value::String(self.name.into())),
                 ("value", Value::String(self.value.into())),
@@ -142,10 +148,14 @@ pub enum SameSitePolicy {
 
 impl ComponentType for SameSitePolicy {
     fn ty() -> ValueType {
-        ValueType::Enum(EnumType::new(None, ["strict", "lax", "none"]).unwrap())
+        ValueType::Enum(EnumType::new(None, [
+            "strict",
+            "lax",
+            "none",
+        ]).unwrap())
     }
 
-    fn from_value(value: &Value) -> Result<Self> {
+    fn from_value(value: &Value, #[allow(unused)] ctx: impl AsContext) -> Result<Self> {
         if let Value::Enum(enum_val) = value {
             let discriminant = enum_val.discriminant();
             match discriminant {
@@ -159,8 +169,12 @@ impl ComponentType for SameSitePolicy {
         }
     }
 
-    fn into_value(self) -> Result<Value> {
-        let enum_type = EnumType::new(None, ["strict", "lax", "none"]).unwrap();
+    fn into_value(self, #[allow(unused)] mut ctx: impl AsContextMut) -> Result<Value> {
+        let enum_type = EnumType::new(None, [
+            "strict",
+            "lax",
+            "none",
+        ]).unwrap();
 
         let discriminant = match self {
             SameSitePolicy::Strict => 0,
@@ -173,6 +187,10 @@ impl ComponentType for SameSitePolicy {
 }
 
 impl UnaryComponentType for SameSitePolicy {}
+
+
+
+
 
 #[derive(Debug, Clone)]
 pub struct Cookie {
@@ -195,35 +213,19 @@ impl ComponentType for Cookie {
                 [
                     ("name", ValueType::String),
                     ("value", ValueType::String),
-                    (
-                        "domain",
-                        ValueType::Option(OptionType::new(ValueType::String)),
-                    ),
-                    (
-                        "path",
-                        ValueType::Option(OptionType::new(ValueType::String)),
-                    ),
-                    (
-                        "expires",
-                        ValueType::Option(OptionType::new(ValueType::U64)),
-                    ),
-                    (
-                        "max-age",
-                        ValueType::Option(OptionType::new(ValueType::U32)),
-                    ),
+                    ("domain", ValueType::Option(OptionType::new(ValueType::String))),
+                    ("path", ValueType::Option(OptionType::new(ValueType::String))),
+                    ("expires", ValueType::Option(OptionType::new(ValueType::U64))),
+                    ("max-age", ValueType::Option(OptionType::new(ValueType::U32))),
                     ("secure", ValueType::Bool),
                     ("http-only", ValueType::Bool),
-                    (
-                        "same-site",
-                        ValueType::Option(OptionType::new(SameSitePolicy::ty())),
-                    ),
+                    ("same-site", ValueType::Option(OptionType::new(SameSitePolicy::ty()))),
                 ],
-            )
-            .unwrap(),
+            ).unwrap(),
         )
     }
 
-    fn from_value(value: &Value) -> Result<Self> {
+    fn from_value(value: &Value, #[allow(unused)] ctx: impl AsContext) -> Result<Self> {
         if let Value::Record(record) = value {
             let name = record
                 .field("name")
@@ -253,31 +255,15 @@ impl ComponentType for Cookie {
                 .field("same-site")
                 .ok_or_else(|| anyhow!("Missing 'same-site' field"))?;
 
-            let name = if let Value::String(s) = name {
-                s.to_string()
-            } else {
-                bail!("Expected string")
-            };
-            let value = if let Value::String(s) = value {
-                s.to_string()
-            } else {
-                bail!("Expected string")
-            };
-            let domain = Option::<String>::from_value(&domain)?;
-            let path = Option::<String>::from_value(&path)?;
-            let expires = Option::<u64>::from_value(&expires)?;
-            let max_age = Option::<u32>::from_value(&max_age)?;
-            let secure = if let Value::Bool(x) = secure {
-                x
-            } else {
-                bail!("Expected bool")
-            };
-            let http_only = if let Value::Bool(x) = http_only {
-                x
-            } else {
-                bail!("Expected bool")
-            };
-            let same_site = Option::<SameSitePolicy>::from_value(&same_site)?;
+            let name = if let Value::String(s) = name { s.to_string() } else { bail!("Expected string") };
+            let value = if let Value::String(s) = value { s.to_string() } else { bail!("Expected string") };
+            let domain = Option::<String>::from_value(&domain, ctx.as_context())?;
+            let path = Option::<String>::from_value(&path, ctx.as_context())?;
+            let expires = Option::<u64>::from_value(&expires, ctx.as_context())?;
+            let max_age = Option::<u32>::from_value(&max_age, ctx.as_context())?;
+            let secure = if let Value::Bool(x) = secure { x } else { bail!("Expected bool") };
+            let http_only = if let Value::Bool(x) = http_only { x } else { bail!("Expected bool") };
+            let same_site = Option::<SameSitePolicy>::from_value(&same_site, ctx.as_context())?;
 
             Ok(Cookie {
                 name,
@@ -295,48 +281,32 @@ impl ComponentType for Cookie {
         }
     }
 
-    fn into_value(self) -> Result<Value> {
+    fn into_value(self, #[allow(unused)] mut ctx: impl AsContextMut) -> Result<Value> {
         let record = Record::new(
             RecordType::new(
                 None,
                 [
                     ("name", ValueType::String),
                     ("value", ValueType::String),
-                    (
-                        "domain",
-                        ValueType::Option(OptionType::new(ValueType::String)),
-                    ),
-                    (
-                        "path",
-                        ValueType::Option(OptionType::new(ValueType::String)),
-                    ),
-                    (
-                        "expires",
-                        ValueType::Option(OptionType::new(ValueType::U64)),
-                    ),
-                    (
-                        "max-age",
-                        ValueType::Option(OptionType::new(ValueType::U32)),
-                    ),
+                    ("domain", ValueType::Option(OptionType::new(ValueType::String))),
+                    ("path", ValueType::Option(OptionType::new(ValueType::String))),
+                    ("expires", ValueType::Option(OptionType::new(ValueType::U64))),
+                    ("max-age", ValueType::Option(OptionType::new(ValueType::U32))),
                     ("secure", ValueType::Bool),
                     ("http-only", ValueType::Bool),
-                    (
-                        "same-site",
-                        ValueType::Option(OptionType::new(SameSitePolicy::ty())),
-                    ),
+                    ("same-site", ValueType::Option(OptionType::new(SameSitePolicy::ty()))),
                 ],
-            )
-            .unwrap(),
+            ).unwrap(),
             [
                 ("name", Value::String(self.name.into())),
                 ("value", Value::String(self.value.into())),
-                ("domain", self.domain.into_value()?),
-                ("path", self.path.into_value()?),
-                ("expires", self.expires.into_value()?),
-                ("max-age", self.max_age.into_value()?),
+                ("domain", self.domain.into_value(ctx.as_context_mut())?),
+                ("path", self.path.into_value(ctx.as_context_mut())?),
+                ("expires", self.expires.into_value(ctx.as_context_mut())?),
+                ("max-age", self.max_age.into_value(ctx.as_context_mut())?),
                 ("secure", Value::Bool(self.secure)),
                 ("http-only", Value::Bool(self.http_only)),
-                ("same-site", self.same_site.into_value()?),
+                ("same-site", self.same_site.into_value(ctx.as_context_mut())?),
             ],
         )?;
         Ok(Value::Record(record))
@@ -344,6 +314,9 @@ impl ComponentType for Cookie {
 }
 
 impl UnaryComponentType for Cookie {}
+
+
+
 
 #[derive(Debug, Clone)]
 pub enum RequestBody {
@@ -362,24 +335,15 @@ impl ComponentType for RequestBody {
                 [
                     VariantCase::new("text", Some(ValueType::String)),
                     VariantCase::new("json", Some(ValueType::String)),
-                    VariantCase::new(
-                        "form",
-                        Some(ValueType::List(ListType::new(ValueType::Tuple(
-                            TupleType::new(None, [ValueType::String, ValueType::String]),
-                        )))),
-                    ),
-                    VariantCase::new(
-                        "binary",
-                        Some(ValueType::List(ListType::new(ValueType::U8))),
-                    ),
+                    VariantCase::new("form", Some(ValueType::List(ListType::new(ValueType::Tuple(TupleType::new(None, [ValueType::String, ValueType::String])))))),
+                    VariantCase::new("binary", Some(ValueType::List(ListType::new(ValueType::U8)))),
                     VariantCase::new("empty", None),
                 ],
-            )
-            .unwrap(),
+            ).unwrap(),
         )
     }
 
-    fn from_value(value: &Value) -> Result<Self> {
+    fn from_value(value: &Value, #[allow(unused)] ctx: impl AsContext) -> Result<Self> {
         if let Value::Variant(variant) = value {
             let discriminant = variant.discriminant();
             let variant_ty = variant.ty();
@@ -390,11 +354,7 @@ impl ComponentType for RequestBody {
             match case_name {
                 "text" => {
                     if let Some(payload_value) = payload {
-                        let converted = if let Value::String(s) = payload_value {
-                            s.to_string()
-                        } else {
-                            bail!("Expected string")
-                        };
+                        let converted = if let Value::String(s) = payload_value { s.to_string() } else { bail!("Expected string") };
                         Ok(RequestBody::Text(converted))
                     } else {
                         bail!("Expected payload for text case")
@@ -402,11 +362,7 @@ impl ComponentType for RequestBody {
                 }
                 "json" => {
                     if let Some(payload_value) = payload {
-                        let converted = if let Value::String(s) = payload_value {
-                            s.to_string()
-                        } else {
-                            bail!("Expected string")
-                        };
+                        let converted = if let Value::String(s) = payload_value { s.to_string() } else { bail!("Expected string") };
                         Ok(RequestBody::Json(converted))
                     } else {
                         bail!("Expected payload for json case")
@@ -414,7 +370,7 @@ impl ComponentType for RequestBody {
                 }
                 "form" => {
                     if let Some(payload_value) = payload {
-                        let converted = Vec::<(String, String)>::from_value(&payload_value)?;
+                        let converted = Vec::<(String, String)>::from_value(&payload_value, ctx.as_context())?;
                         Ok(RequestBody::Form(converted))
                     } else {
                         bail!("Expected payload for form case")
@@ -422,7 +378,7 @@ impl ComponentType for RequestBody {
                 }
                 "binary" => {
                     if let Some(payload_value) = payload {
-                        let converted = Vec::<u8>::from_value(&payload_value)?;
+                        let converted = Vec::<u8>::from_value(&payload_value, ctx.as_context())?;
                         Ok(RequestBody::Binary(converted))
                     } else {
                         bail!("Expected payload for binary case")
@@ -436,32 +392,23 @@ impl ComponentType for RequestBody {
         }
     }
 
-    fn into_value(self) -> Result<Value> {
+    fn into_value(self, #[allow(unused)] mut ctx: impl AsContextMut) -> Result<Value> {
         let variant_type = VariantType::new(
             None,
             [
                 VariantCase::new("text", Some(ValueType::String)),
                 VariantCase::new("json", Some(ValueType::String)),
-                VariantCase::new(
-                    "form",
-                    Some(ValueType::List(ListType::new(ValueType::Tuple(
-                        TupleType::new(None, [ValueType::String, ValueType::String]),
-                    )))),
-                ),
-                VariantCase::new(
-                    "binary",
-                    Some(ValueType::List(ListType::new(ValueType::U8))),
-                ),
+                VariantCase::new("form", Some(ValueType::List(ListType::new(ValueType::Tuple(TupleType::new(None, [ValueType::String, ValueType::String])))))),
+                VariantCase::new("binary", Some(ValueType::List(ListType::new(ValueType::U8)))),
                 VariantCase::new("empty", None),
             ],
-        )
-        .unwrap();
+        ).unwrap();
 
         let (discriminant, payload) = match self {
             RequestBody::Text(val) => (0, Some(Value::String(val.into()))),
             RequestBody::Json(val) => (1, Some(Value::String(val.into()))),
-            RequestBody::Form(val) => (2, Some(val.into_value()?)),
-            RequestBody::Binary(val) => (3, Some(val.into_value()?)),
+            RequestBody::Form(val) => (2, Some(val.into_value(ctx.as_context_mut())?)),
+            RequestBody::Binary(val) => (3, Some(val.into_value(ctx.as_context_mut())?)),
             RequestBody::Empty => (4, None),
         };
 
@@ -471,6 +418,9 @@ impl ComponentType for RequestBody {
 }
 
 impl UnaryComponentType for RequestBody {}
+
+
+
 
 #[derive(Debug, Clone)]
 pub struct HttpRequest {
@@ -494,26 +444,16 @@ impl ComponentType for HttpRequest {
                     ("url", ValueType::String),
                     ("headers", ValueType::List(ListType::new(HttpHeader::ty()))),
                     ("cookies", ValueType::List(ListType::new(Cookie::ty()))),
-                    (
-                        "body",
-                        ValueType::Option(OptionType::new(RequestBody::ty())),
-                    ),
-                    (
-                        "timeout-ms",
-                        ValueType::Option(OptionType::new(ValueType::U32)),
-                    ),
+                    ("body", ValueType::Option(OptionType::new(RequestBody::ty()))),
+                    ("timeout-ms", ValueType::Option(OptionType::new(ValueType::U32))),
                     ("follow-redirects", ValueType::Bool),
-                    (
-                        "max-redirects",
-                        ValueType::Option(OptionType::new(ValueType::U32)),
-                    ),
+                    ("max-redirects", ValueType::Option(OptionType::new(ValueType::U32))),
                 ],
-            )
-            .unwrap(),
+            ).unwrap(),
         )
     }
 
-    fn from_value(value: &Value) -> Result<Self> {
+    fn from_value(value: &Value, #[allow(unused)] ctx: impl AsContext) -> Result<Self> {
         if let Value::Record(record) = value {
             let method = record
                 .field("method")
@@ -540,22 +480,14 @@ impl ComponentType for HttpRequest {
                 .field("max-redirects")
                 .ok_or_else(|| anyhow!("Missing 'max-redirects' field"))?;
 
-            let method = HttpMethod::from_value(&method)?;
-            let url = if let Value::String(s) = url {
-                s.to_string()
-            } else {
-                bail!("Expected string")
-            };
-            let headers = Vec::<HttpHeader>::from_value(&headers)?;
-            let cookies = Vec::<Cookie>::from_value(&cookies)?;
-            let body = Option::<RequestBody>::from_value(&body)?;
-            let timeout_ms = Option::<u32>::from_value(&timeout_ms)?;
-            let follow_redirects = if let Value::Bool(x) = follow_redirects {
-                x
-            } else {
-                bail!("Expected bool")
-            };
-            let max_redirects = Option::<u32>::from_value(&max_redirects)?;
+            let method = HttpMethod::from_value(&method, ctx.as_context())?;
+            let url = if let Value::String(s) = url { s.to_string() } else { bail!("Expected string") };
+            let headers = Vec::<HttpHeader>::from_value(&headers, ctx.as_context())?;
+            let cookies = Vec::<Cookie>::from_value(&cookies, ctx.as_context())?;
+            let body = Option::<RequestBody>::from_value(&body, ctx.as_context())?;
+            let timeout_ms = Option::<u32>::from_value(&timeout_ms, ctx.as_context())?;
+            let follow_redirects = if let Value::Bool(x) = follow_redirects { x } else { bail!("Expected bool") };
+            let max_redirects = Option::<u32>::from_value(&max_redirects, ctx.as_context())?;
 
             Ok(HttpRequest {
                 method,
@@ -572,7 +504,7 @@ impl ComponentType for HttpRequest {
         }
     }
 
-    fn into_value(self) -> Result<Value> {
+    fn into_value(self, #[allow(unused)] mut ctx: impl AsContextMut) -> Result<Value> {
         let record = Record::new(
             RecordType::new(
                 None,
@@ -581,31 +513,21 @@ impl ComponentType for HttpRequest {
                     ("url", ValueType::String),
                     ("headers", ValueType::List(ListType::new(HttpHeader::ty()))),
                     ("cookies", ValueType::List(ListType::new(Cookie::ty()))),
-                    (
-                        "body",
-                        ValueType::Option(OptionType::new(RequestBody::ty())),
-                    ),
-                    (
-                        "timeout-ms",
-                        ValueType::Option(OptionType::new(ValueType::U32)),
-                    ),
+                    ("body", ValueType::Option(OptionType::new(RequestBody::ty()))),
+                    ("timeout-ms", ValueType::Option(OptionType::new(ValueType::U32))),
                     ("follow-redirects", ValueType::Bool),
-                    (
-                        "max-redirects",
-                        ValueType::Option(OptionType::new(ValueType::U32)),
-                    ),
+                    ("max-redirects", ValueType::Option(OptionType::new(ValueType::U32))),
                 ],
-            )
-            .unwrap(),
+            ).unwrap(),
             [
-                ("method", self.method.into_value()?),
+                ("method", self.method.into_value(ctx.as_context_mut())?),
                 ("url", Value::String(self.url.into())),
-                ("headers", self.headers.into_value()?),
-                ("cookies", self.cookies.into_value()?),
-                ("body", self.body.into_value()?),
-                ("timeout-ms", self.timeout_ms.into_value()?),
+                ("headers", self.headers.into_value(ctx.as_context_mut())?),
+                ("cookies", self.cookies.into_value(ctx.as_context_mut())?),
+                ("body", self.body.into_value(ctx.as_context_mut())?),
+                ("timeout-ms", self.timeout_ms.into_value(ctx.as_context_mut())?),
                 ("follow-redirects", Value::Bool(self.follow_redirects)),
-                ("max-redirects", self.max_redirects.into_value()?),
+                ("max-redirects", self.max_redirects.into_value(ctx.as_context_mut())?),
             ],
         )?;
         Ok(Value::Record(record))
@@ -625,13 +547,15 @@ impl ComponentType for HttpStatus {
         ValueType::Record(
             RecordType::new(
                 None,
-                [("code", ValueType::U32), ("text", ValueType::String)],
-            )
-            .unwrap(),
+                [
+                    ("code", ValueType::U32),
+                    ("text", ValueType::String),
+                ],
+            ).unwrap(),
         )
     }
 
-    fn from_value(value: &Value) -> Result<Self> {
+    fn from_value(value: &Value, #[allow(unused)] ctx: impl AsContext) -> Result<Self> {
         if let Value::Record(record) = value {
             let code = record
                 .field("code")
@@ -640,30 +564,27 @@ impl ComponentType for HttpStatus {
                 .field("text")
                 .ok_or_else(|| anyhow!("Missing 'text' field"))?;
 
-            let code = if let Value::U32(x) = code {
-                x
-            } else {
-                bail!("Expected u32")
-            };
-            let text = if let Value::String(s) = text {
-                s.to_string()
-            } else {
-                bail!("Expected string")
-            };
+            let code = if let Value::U32(x) = code { x } else { bail!("Expected u32") };
+            let text = if let Value::String(s) = text { s.to_string() } else { bail!("Expected string") };
 
-            Ok(HttpStatus { code, text })
+            Ok(HttpStatus {
+                code,
+                text,
+            })
         } else {
             bail!("Expected Record value")
         }
     }
 
-    fn into_value(self) -> Result<Value> {
+    fn into_value(self, #[allow(unused)] mut ctx: impl AsContextMut) -> Result<Value> {
         let record = Record::new(
             RecordType::new(
                 None,
-                [("code", ValueType::U32), ("text", ValueType::String)],
-            )
-            .unwrap(),
+                [
+                    ("code", ValueType::U32),
+                    ("text", ValueType::String),
+                ],
+            ).unwrap(),
             [
                 ("code", Value::U32(self.code)),
                 ("text", Value::String(self.text.into())),
@@ -688,17 +609,13 @@ impl ComponentType for ResponseData {
                 None,
                 [
                     VariantCase::new("text", Some(ValueType::String)),
-                    VariantCase::new(
-                        "binary",
-                        Some(ValueType::List(ListType::new(ValueType::U8))),
-                    ),
+                    VariantCase::new("binary", Some(ValueType::List(ListType::new(ValueType::U8)))),
                 ],
-            )
-            .unwrap(),
+            ).unwrap(),
         )
     }
 
-    fn from_value(value: &Value) -> Result<Self> {
+    fn from_value(value: &Value, #[allow(unused)] ctx: impl AsContext) -> Result<Self> {
         if let Value::Variant(variant) = value {
             let discriminant = variant.discriminant();
             let variant_ty = variant.ty();
@@ -709,11 +626,7 @@ impl ComponentType for ResponseData {
             match case_name {
                 "text" => {
                     if let Some(payload_value) = payload {
-                        let converted = if let Value::String(s) = payload_value {
-                            s.to_string()
-                        } else {
-                            bail!("Expected string")
-                        };
+                        let converted = if let Value::String(s) = payload_value { s.to_string() } else { bail!("Expected string") };
                         Ok(ResponseData::Text(converted))
                     } else {
                         bail!("Expected payload for text case")
@@ -721,7 +634,7 @@ impl ComponentType for ResponseData {
                 }
                 "binary" => {
                     if let Some(payload_value) = payload {
-                        let converted = Vec::<u8>::from_value(&payload_value)?;
+                        let converted = Vec::<u8>::from_value(&payload_value, ctx.as_context())?;
                         Ok(ResponseData::Binary(converted))
                     } else {
                         bail!("Expected payload for binary case")
@@ -734,22 +647,18 @@ impl ComponentType for ResponseData {
         }
     }
 
-    fn into_value(self) -> Result<Value> {
+    fn into_value(self, #[allow(unused)] mut ctx: impl AsContextMut) -> Result<Value> {
         let variant_type = VariantType::new(
             None,
             [
                 VariantCase::new("text", Some(ValueType::String)),
-                VariantCase::new(
-                    "binary",
-                    Some(ValueType::List(ListType::new(ValueType::U8))),
-                ),
+                VariantCase::new("binary", Some(ValueType::List(ListType::new(ValueType::U8)))),
             ],
-        )
-        .unwrap();
+        ).unwrap();
 
         let (discriminant, payload) = match self {
             ResponseData::Text(val) => (0, Some(Value::String(val.into()))),
-            ResponseData::Binary(val) => (1, Some(val.into_value()?)),
+            ResponseData::Binary(val) => (1, Some(val.into_value(ctx.as_context_mut())?)),
         };
 
         let variant = Variant::new(variant_type, discriminant, payload)?;
@@ -774,17 +683,13 @@ impl ComponentType for ResponseContent {
                 [
                     ("content-type", ValueType::String),
                     ("data", ResponseData::ty()),
-                    (
-                        "encoding",
-                        ValueType::Option(OptionType::new(ValueType::String)),
-                    ),
+                    ("encoding", ValueType::Option(OptionType::new(ValueType::String))),
                 ],
-            )
-            .unwrap(),
+            ).unwrap(),
         )
     }
 
-    fn from_value(value: &Value) -> Result<Self> {
+    fn from_value(value: &Value, #[allow(unused)] ctx: impl AsContext) -> Result<Self> {
         if let Value::Record(record) = value {
             let content_type = record
                 .field("content-type")
@@ -796,13 +701,9 @@ impl ComponentType for ResponseContent {
                 .field("encoding")
                 .ok_or_else(|| anyhow!("Missing 'encoding' field"))?;
 
-            let content_type = if let Value::String(s) = content_type {
-                s.to_string()
-            } else {
-                bail!("Expected string")
-            };
-            let data = ResponseData::from_value(&data)?;
-            let encoding = Option::<String>::from_value(&encoding)?;
+            let content_type = if let Value::String(s) = content_type { s.to_string() } else { bail!("Expected string") };
+            let data = ResponseData::from_value(&data, ctx.as_context())?;
+            let encoding = Option::<String>::from_value(&encoding, ctx.as_context())?;
 
             Ok(ResponseContent {
                 content_type,
@@ -814,24 +715,20 @@ impl ComponentType for ResponseContent {
         }
     }
 
-    fn into_value(self) -> Result<Value> {
+    fn into_value(self, #[allow(unused)] mut ctx: impl AsContextMut) -> Result<Value> {
         let record = Record::new(
             RecordType::new(
                 None,
                 [
                     ("content-type", ValueType::String),
                     ("data", ResponseData::ty()),
-                    (
-                        "encoding",
-                        ValueType::Option(OptionType::new(ValueType::String)),
-                    ),
+                    ("encoding", ValueType::Option(OptionType::new(ValueType::String))),
                 ],
-            )
-            .unwrap(),
+            ).unwrap(),
             [
                 ("content-type", Value::String(self.content_type.into())),
-                ("data", self.data.into_value()?),
-                ("encoding", self.encoding.into_value()?),
+                ("data", self.data.into_value(ctx.as_context_mut())?),
+                ("encoding", self.encoding.into_value(ctx.as_context_mut())?),
             ],
         )?;
         Ok(Value::Record(record))
@@ -857,19 +754,15 @@ impl ComponentType for ResponseTiming {
                 [
                     ("dns-lookup-ms", ValueType::U32),
                     ("tcp-connect-ms", ValueType::U32),
-                    (
-                        "tls-handshake-ms",
-                        ValueType::Option(OptionType::new(ValueType::U32)),
-                    ),
+                    ("tls-handshake-ms", ValueType::Option(OptionType::new(ValueType::U32))),
                     ("time-to-first-byte-ms", ValueType::U32),
                     ("total-time-ms", ValueType::U32),
                 ],
-            )
-            .unwrap(),
+            ).unwrap(),
         )
     }
 
-    fn from_value(value: &Value) -> Result<Self> {
+    fn from_value(value: &Value, #[allow(unused)] ctx: impl AsContext) -> Result<Self> {
         if let Value::Record(record) = value {
             let dns_lookup_ms = record
                 .field("dns-lookup-ms")
@@ -887,27 +780,11 @@ impl ComponentType for ResponseTiming {
                 .field("total-time-ms")
                 .ok_or_else(|| anyhow!("Missing 'total-time-ms' field"))?;
 
-            let dns_lookup_ms = if let Value::U32(x) = dns_lookup_ms {
-                x
-            } else {
-                bail!("Expected u32")
-            };
-            let tcp_connect_ms = if let Value::U32(x) = tcp_connect_ms {
-                x
-            } else {
-                bail!("Expected u32")
-            };
-            let tls_handshake_ms = Option::<u32>::from_value(&tls_handshake_ms)?;
-            let time_to_first_byte_ms = if let Value::U32(x) = time_to_first_byte_ms {
-                x
-            } else {
-                bail!("Expected u32")
-            };
-            let total_time_ms = if let Value::U32(x) = total_time_ms {
-                x
-            } else {
-                bail!("Expected u32")
-            };
+            let dns_lookup_ms = if let Value::U32(x) = dns_lookup_ms { x } else { bail!("Expected u32") };
+            let tcp_connect_ms = if let Value::U32(x) = tcp_connect_ms { x } else { bail!("Expected u32") };
+            let tls_handshake_ms = Option::<u32>::from_value(&tls_handshake_ms, ctx.as_context())?;
+            let time_to_first_byte_ms = if let Value::U32(x) = time_to_first_byte_ms { x } else { bail!("Expected u32") };
+            let total_time_ms = if let Value::U32(x) = total_time_ms { x } else { bail!("Expected u32") };
 
             Ok(ResponseTiming {
                 dns_lookup_ms,
@@ -921,30 +798,23 @@ impl ComponentType for ResponseTiming {
         }
     }
 
-    fn into_value(self) -> Result<Value> {
+    fn into_value(self, #[allow(unused)] mut ctx: impl AsContextMut) -> Result<Value> {
         let record = Record::new(
             RecordType::new(
                 None,
                 [
                     ("dns-lookup-ms", ValueType::U32),
                     ("tcp-connect-ms", ValueType::U32),
-                    (
-                        "tls-handshake-ms",
-                        ValueType::Option(OptionType::new(ValueType::U32)),
-                    ),
+                    ("tls-handshake-ms", ValueType::Option(OptionType::new(ValueType::U32))),
                     ("time-to-first-byte-ms", ValueType::U32),
                     ("total-time-ms", ValueType::U32),
                 ],
-            )
-            .unwrap(),
+            ).unwrap(),
             [
                 ("dns-lookup-ms", Value::U32(self.dns_lookup_ms)),
                 ("tcp-connect-ms", Value::U32(self.tcp_connect_ms)),
-                ("tls-handshake-ms", self.tls_handshake_ms.into_value()?),
-                (
-                    "time-to-first-byte-ms",
-                    Value::U32(self.time_to_first_byte_ms),
-                ),
+                ("tls-handshake-ms", self.tls_handshake_ms.into_value(ctx.as_context_mut())?),
+                ("time-to-first-byte-ms", Value::U32(self.time_to_first_byte_ms)),
                 ("total-time-ms", Value::U32(self.total_time_ms)),
             ],
         )?;
@@ -953,6 +823,8 @@ impl ComponentType for ResponseTiming {
 }
 
 impl UnaryComponentType for ResponseTiming {}
+
+
 
 #[derive(Debug, Clone)]
 pub struct HttpResponse {
@@ -973,22 +845,15 @@ impl ComponentType for HttpResponse {
                     ("status", HttpStatus::ty()),
                     ("headers", ValueType::List(ListType::new(HttpHeader::ty()))),
                     ("cookies", ValueType::List(ListType::new(Cookie::ty()))),
-                    (
-                        "content",
-                        ValueType::Option(OptionType::new(ResponseContent::ty())),
-                    ),
-                    (
-                        "redirect-chain",
-                        ValueType::List(ListType::new(ValueType::String)),
-                    ),
+                    ("content", ValueType::Option(OptionType::new(ResponseContent::ty()))),
+                    ("redirect-chain", ValueType::List(ListType::new(ValueType::String))),
                     ("timing", ResponseTiming::ty()),
                 ],
-            )
-            .unwrap(),
+            ).unwrap(),
         )
     }
 
-    fn from_value(value: &Value) -> Result<Self> {
+    fn from_value(value: &Value, #[allow(unused)] ctx: impl AsContext) -> Result<Self> {
         if let Value::Record(record) = value {
             let status = record
                 .field("status")
@@ -1009,12 +874,12 @@ impl ComponentType for HttpResponse {
                 .field("timing")
                 .ok_or_else(|| anyhow!("Missing 'timing' field"))?;
 
-            let status = HttpStatus::from_value(&status)?;
-            let headers = Vec::<HttpHeader>::from_value(&headers)?;
-            let cookies = Vec::<Cookie>::from_value(&cookies)?;
-            let content = Option::<ResponseContent>::from_value(&content)?;
-            let redirect_chain = Vec::<String>::from_value(&redirect_chain)?;
-            let timing = ResponseTiming::from_value(&timing)?;
+            let status = HttpStatus::from_value(&status, ctx.as_context())?;
+            let headers = Vec::<HttpHeader>::from_value(&headers, ctx.as_context())?;
+            let cookies = Vec::<Cookie>::from_value(&cookies, ctx.as_context())?;
+            let content = Option::<ResponseContent>::from_value(&content, ctx.as_context())?;
+            let redirect_chain = Vec::<String>::from_value(&redirect_chain, ctx.as_context())?;
+            let timing = ResponseTiming::from_value(&timing, ctx.as_context())?;
 
             Ok(HttpResponse {
                 status,
@@ -1029,7 +894,7 @@ impl ComponentType for HttpResponse {
         }
     }
 
-    fn into_value(self) -> Result<Value> {
+    fn into_value(self, #[allow(unused)] mut ctx: impl AsContextMut) -> Result<Value> {
         let record = Record::new(
             RecordType::new(
                 None,
@@ -1037,25 +902,18 @@ impl ComponentType for HttpResponse {
                     ("status", HttpStatus::ty()),
                     ("headers", ValueType::List(ListType::new(HttpHeader::ty()))),
                     ("cookies", ValueType::List(ListType::new(Cookie::ty()))),
-                    (
-                        "content",
-                        ValueType::Option(OptionType::new(ResponseContent::ty())),
-                    ),
-                    (
-                        "redirect-chain",
-                        ValueType::List(ListType::new(ValueType::String)),
-                    ),
+                    ("content", ValueType::Option(OptionType::new(ResponseContent::ty()))),
+                    ("redirect-chain", ValueType::List(ListType::new(ValueType::String))),
                     ("timing", ResponseTiming::ty()),
                 ],
-            )
-            .unwrap(),
+            ).unwrap(),
             [
-                ("status", self.status.into_value()?),
-                ("headers", self.headers.into_value()?),
-                ("cookies", self.cookies.into_value()?),
-                ("content", self.content.into_value()?),
-                ("redirect-chain", self.redirect_chain.into_value()?),
-                ("timing", self.timing.into_value()?),
+                ("status", self.status.into_value(ctx.as_context_mut())?),
+                ("headers", self.headers.into_value(ctx.as_context_mut())?),
+                ("cookies", self.cookies.into_value(ctx.as_context_mut())?),
+                ("content", self.content.into_value(ctx.as_context_mut())?),
+                ("redirect-chain", self.redirect_chain.into_value(ctx.as_context_mut())?),
+                ("timing", self.timing.into_value(ctx.as_context_mut())?),
             ],
         )?;
         Ok(Value::Record(record))
@@ -1063,6 +921,8 @@ impl ComponentType for HttpResponse {
 }
 
 impl UnaryComponentType for HttpResponse {}
+
+
 
 #[derive(Debug, Clone)]
 pub enum Selector {
@@ -1082,24 +942,14 @@ impl ComponentType for Selector {
                     VariantCase::new("id", Some(ValueType::String)),
                     VariantCase::new("class", Some(ValueType::String)),
                     VariantCase::new("tag", Some(ValueType::String)),
-                    VariantCase::new(
-                        "attribute",
-                        Some(ValueType::Tuple(TupleType::new(
-                            None,
-                            [
-                                ValueType::String,
-                                ValueType::Option(OptionType::new(ValueType::String)),
-                            ],
-                        ))),
-                    ),
+                    VariantCase::new("attribute", Some(ValueType::Tuple(TupleType::new(None, [ValueType::String, ValueType::Option(OptionType::new(ValueType::String))])))),
                     VariantCase::new("complex", Some(ValueType::String)),
                 ],
-            )
-            .unwrap(),
+            ).unwrap(),
         )
     }
 
-    fn from_value(value: &Value) -> Result<Self> {
+    fn from_value(value: &Value, #[allow(unused)] ctx: impl AsContext) -> Result<Self> {
         if let Value::Variant(variant) = value {
             let discriminant = variant.discriminant();
             let variant_ty = variant.ty();
@@ -1110,11 +960,7 @@ impl ComponentType for Selector {
             match case_name {
                 "id" => {
                     if let Some(payload_value) = payload {
-                        let converted = if let Value::String(s) = payload_value {
-                            s.to_string()
-                        } else {
-                            bail!("Expected string")
-                        };
+                        let converted = if let Value::String(s) = payload_value { s.to_string() } else { bail!("Expected string") };
                         Ok(Selector::Id(converted))
                     } else {
                         bail!("Expected payload for id case")
@@ -1122,11 +968,7 @@ impl ComponentType for Selector {
                 }
                 "class" => {
                     if let Some(payload_value) = payload {
-                        let converted = if let Value::String(s) = payload_value {
-                            s.to_string()
-                        } else {
-                            bail!("Expected string")
-                        };
+                        let converted = if let Value::String(s) = payload_value { s.to_string() } else { bail!("Expected string") };
                         Ok(Selector::Class(converted))
                     } else {
                         bail!("Expected payload for class case")
@@ -1134,11 +976,7 @@ impl ComponentType for Selector {
                 }
                 "tag" => {
                     if let Some(payload_value) = payload {
-                        let converted = if let Value::String(s) = payload_value {
-                            s.to_string()
-                        } else {
-                            bail!("Expected string")
-                        };
+                        let converted = if let Value::String(s) = payload_value { s.to_string() } else { bail!("Expected string") };
                         Ok(Selector::Tag(converted))
                     } else {
                         bail!("Expected payload for tag case")
@@ -1146,7 +984,7 @@ impl ComponentType for Selector {
                 }
                 "attribute" => {
                     if let Some(payload_value) = payload {
-                        let converted = <(String, Option<String>)>::from_value(&payload_value)?;
+                        let converted = <(String, Option<String>)>::from_value(&payload_value, ctx.as_context())?;
                         Ok(Selector::Attribute(converted))
                     } else {
                         bail!("Expected payload for attribute case")
@@ -1154,11 +992,7 @@ impl ComponentType for Selector {
                 }
                 "complex" => {
                     if let Some(payload_value) = payload {
-                        let converted = if let Value::String(s) = payload_value {
-                            s.to_string()
-                        } else {
-                            bail!("Expected string")
-                        };
+                        let converted = if let Value::String(s) = payload_value { s.to_string() } else { bail!("Expected string") };
                         Ok(Selector::Complex(converted))
                     } else {
                         bail!("Expected payload for complex case")
@@ -1171,33 +1005,23 @@ impl ComponentType for Selector {
         }
     }
 
-    fn into_value(self) -> Result<Value> {
+    fn into_value(self, #[allow(unused)] mut ctx: impl AsContextMut) -> Result<Value> {
         let variant_type = VariantType::new(
             None,
             [
                 VariantCase::new("id", Some(ValueType::String)),
                 VariantCase::new("class", Some(ValueType::String)),
                 VariantCase::new("tag", Some(ValueType::String)),
-                VariantCase::new(
-                    "attribute",
-                    Some(ValueType::Tuple(TupleType::new(
-                        None,
-                        [
-                            ValueType::String,
-                            ValueType::Option(OptionType::new(ValueType::String)),
-                        ],
-                    ))),
-                ),
+                VariantCase::new("attribute", Some(ValueType::Tuple(TupleType::new(None, [ValueType::String, ValueType::Option(OptionType::new(ValueType::String))])))),
                 VariantCase::new("complex", Some(ValueType::String)),
             ],
-        )
-        .unwrap();
+        ).unwrap();
 
         let (discriminant, payload) = match self {
             Selector::Id(val) => (0, Some(Value::String(val.into()))),
             Selector::Class(val) => (1, Some(Value::String(val.into()))),
             Selector::Tag(val) => (2, Some(Value::String(val.into()))),
-            Selector::Attribute(val) => (3, Some(val.into_value()?)),
+            Selector::Attribute(val) => (3, Some(val.into_value(ctx.as_context_mut())?)),
             Selector::Complex(val) => (4, Some(Value::String(val.into()))),
         };
 
@@ -1219,13 +1043,15 @@ impl ComponentType for ElementAttribute {
         ValueType::Record(
             RecordType::new(
                 None,
-                [("name", ValueType::String), ("value", ValueType::String)],
-            )
-            .unwrap(),
+                [
+                    ("name", ValueType::String),
+                    ("value", ValueType::String),
+                ],
+            ).unwrap(),
         )
     }
 
-    fn from_value(value: &Value) -> Result<Self> {
+    fn from_value(value: &Value, #[allow(unused)] ctx: impl AsContext) -> Result<Self> {
         if let Value::Record(record) = value {
             let name = record
                 .field("name")
@@ -1234,30 +1060,27 @@ impl ComponentType for ElementAttribute {
                 .field("value")
                 .ok_or_else(|| anyhow!("Missing 'value' field"))?;
 
-            let name = if let Value::String(s) = name {
-                s.to_string()
-            } else {
-                bail!("Expected string")
-            };
-            let value = if let Value::String(s) = value {
-                s.to_string()
-            } else {
-                bail!("Expected string")
-            };
+            let name = if let Value::String(s) = name { s.to_string() } else { bail!("Expected string") };
+            let value = if let Value::String(s) = value { s.to_string() } else { bail!("Expected string") };
 
-            Ok(ElementAttribute { name, value })
+            Ok(ElementAttribute {
+                name,
+                value,
+            })
         } else {
             bail!("Expected Record value")
         }
     }
 
-    fn into_value(self) -> Result<Value> {
+    fn into_value(self, #[allow(unused)] mut ctx: impl AsContextMut) -> Result<Value> {
         let record = Record::new(
             RecordType::new(
                 None,
-                [("name", ValueType::String), ("value", ValueType::String)],
-            )
-            .unwrap(),
+                [
+                    ("name", ValueType::String),
+                    ("value", ValueType::String),
+                ],
+            ).unwrap(),
             [
                 ("name", Value::String(self.name.into())),
                 ("value", Value::String(self.value.into())),
@@ -1286,12 +1109,11 @@ impl ComponentType for ElementStyle {
                     ("value", ValueType::String),
                     ("important", ValueType::Bool),
                 ],
-            )
-            .unwrap(),
+            ).unwrap(),
         )
     }
 
-    fn from_value(value: &Value) -> Result<Self> {
+    fn from_value(value: &Value, #[allow(unused)] ctx: impl AsContext) -> Result<Self> {
         if let Value::Record(record) = value {
             let property = record
                 .field("property")
@@ -1303,21 +1125,9 @@ impl ComponentType for ElementStyle {
                 .field("important")
                 .ok_or_else(|| anyhow!("Missing 'important' field"))?;
 
-            let property = if let Value::String(s) = property {
-                s.to_string()
-            } else {
-                bail!("Expected string")
-            };
-            let value = if let Value::String(s) = value {
-                s.to_string()
-            } else {
-                bail!("Expected string")
-            };
-            let important = if let Value::Bool(x) = important {
-                x
-            } else {
-                bail!("Expected bool")
-            };
+            let property = if let Value::String(s) = property { s.to_string() } else { bail!("Expected string") };
+            let value = if let Value::String(s) = value { s.to_string() } else { bail!("Expected string") };
+            let important = if let Value::Bool(x) = important { x } else { bail!("Expected bool") };
 
             Ok(ElementStyle {
                 property,
@@ -1329,7 +1139,7 @@ impl ComponentType for ElementStyle {
         }
     }
 
-    fn into_value(self) -> Result<Value> {
+    fn into_value(self, #[allow(unused)] mut ctx: impl AsContextMut) -> Result<Value> {
         let record = Record::new(
             RecordType::new(
                 None,
@@ -1338,8 +1148,7 @@ impl ComponentType for ElementStyle {
                     ("value", ValueType::String),
                     ("important", ValueType::Bool),
                 ],
-            )
-            .unwrap(),
+            ).unwrap(),
             [
                 ("property", Value::String(self.property.into())),
                 ("value", Value::String(self.value.into())),
@@ -1351,6 +1160,8 @@ impl ComponentType for ElementStyle {
 }
 
 impl UnaryComponentType for ElementStyle {}
+
+
 
 #[derive(Debug, Clone)]
 pub struct DomElement {
@@ -1375,32 +1186,19 @@ impl ComponentType for DomElement {
                     ("tag-name", ValueType::String),
                     ("id", ValueType::Option(OptionType::new(ValueType::String))),
                     ("classes", ValueType::List(ListType::new(ValueType::String))),
-                    (
-                        "attributes",
-                        ValueType::List(ListType::new(ElementAttribute::ty())),
-                    ),
+                    ("attributes", ValueType::List(ListType::new(ElementAttribute::ty()))),
                     ("styles", ValueType::List(ListType::new(ElementStyle::ty()))),
-                    (
-                        "text-content",
-                        ValueType::Option(OptionType::new(ValueType::String)),
-                    ),
-                    (
-                        "inner-html",
-                        ValueType::Option(OptionType::new(ValueType::String)),
-                    ),
-                    (
-                        "parent-path",
-                        ValueType::List(ListType::new(ValueType::String)),
-                    ),
+                    ("text-content", ValueType::Option(OptionType::new(ValueType::String))),
+                    ("inner-html", ValueType::Option(OptionType::new(ValueType::String))),
+                    ("parent-path", ValueType::List(ListType::new(ValueType::String))),
                     ("has-children", ValueType::Bool),
                     ("child-count", ValueType::U32),
                 ],
-            )
-            .unwrap(),
+            ).unwrap(),
         )
     }
 
-    fn from_value(value: &Value) -> Result<Self> {
+    fn from_value(value: &Value, #[allow(unused)] ctx: impl AsContext) -> Result<Self> {
         if let Value::Record(record) = value {
             let tag_name = record
                 .field("tag-name")
@@ -1433,28 +1231,16 @@ impl ComponentType for DomElement {
                 .field("child-count")
                 .ok_or_else(|| anyhow!("Missing 'child-count' field"))?;
 
-            let tag_name = if let Value::String(s) = tag_name {
-                s.to_string()
-            } else {
-                bail!("Expected string")
-            };
-            let id = Option::<String>::from_value(&id)?;
-            let classes = Vec::<String>::from_value(&classes)?;
-            let attributes = Vec::<ElementAttribute>::from_value(&attributes)?;
-            let styles = Vec::<ElementStyle>::from_value(&styles)?;
-            let text_content = Option::<String>::from_value(&text_content)?;
-            let inner_html = Option::<String>::from_value(&inner_html)?;
-            let parent_path = Vec::<String>::from_value(&parent_path)?;
-            let has_children = if let Value::Bool(x) = has_children {
-                x
-            } else {
-                bail!("Expected bool")
-            };
-            let child_count = if let Value::U32(x) = child_count {
-                x
-            } else {
-                bail!("Expected u32")
-            };
+            let tag_name = if let Value::String(s) = tag_name { s.to_string() } else { bail!("Expected string") };
+            let id = Option::<String>::from_value(&id, ctx.as_context())?;
+            let classes = Vec::<String>::from_value(&classes, ctx.as_context())?;
+            let attributes = Vec::<ElementAttribute>::from_value(&attributes, ctx.as_context())?;
+            let styles = Vec::<ElementStyle>::from_value(&styles, ctx.as_context())?;
+            let text_content = Option::<String>::from_value(&text_content, ctx.as_context())?;
+            let inner_html = Option::<String>::from_value(&inner_html, ctx.as_context())?;
+            let parent_path = Vec::<String>::from_value(&parent_path, ctx.as_context())?;
+            let has_children = if let Value::Bool(x) = has_children { x } else { bail!("Expected bool") };
+            let child_count = if let Value::U32(x) = child_count { x } else { bail!("Expected u32") };
 
             Ok(DomElement {
                 tag_name,
@@ -1473,7 +1259,7 @@ impl ComponentType for DomElement {
         }
     }
 
-    fn into_value(self) -> Result<Value> {
+    fn into_value(self, #[allow(unused)] mut ctx: impl AsContextMut) -> Result<Value> {
         let record = Record::new(
             RecordType::new(
                 None,
@@ -1481,37 +1267,24 @@ impl ComponentType for DomElement {
                     ("tag-name", ValueType::String),
                     ("id", ValueType::Option(OptionType::new(ValueType::String))),
                     ("classes", ValueType::List(ListType::new(ValueType::String))),
-                    (
-                        "attributes",
-                        ValueType::List(ListType::new(ElementAttribute::ty())),
-                    ),
+                    ("attributes", ValueType::List(ListType::new(ElementAttribute::ty()))),
                     ("styles", ValueType::List(ListType::new(ElementStyle::ty()))),
-                    (
-                        "text-content",
-                        ValueType::Option(OptionType::new(ValueType::String)),
-                    ),
-                    (
-                        "inner-html",
-                        ValueType::Option(OptionType::new(ValueType::String)),
-                    ),
-                    (
-                        "parent-path",
-                        ValueType::List(ListType::new(ValueType::String)),
-                    ),
+                    ("text-content", ValueType::Option(OptionType::new(ValueType::String))),
+                    ("inner-html", ValueType::Option(OptionType::new(ValueType::String))),
+                    ("parent-path", ValueType::List(ListType::new(ValueType::String))),
                     ("has-children", ValueType::Bool),
                     ("child-count", ValueType::U32),
                 ],
-            )
-            .unwrap(),
+            ).unwrap(),
             [
                 ("tag-name", Value::String(self.tag_name.into())),
-                ("id", self.id.into_value()?),
-                ("classes", self.classes.into_value()?),
-                ("attributes", self.attributes.into_value()?),
-                ("styles", self.styles.into_value()?),
-                ("text-content", self.text_content.into_value()?),
-                ("inner-html", self.inner_html.into_value()?),
-                ("parent-path", self.parent_path.into_value()?),
+                ("id", self.id.into_value(ctx.as_context_mut())?),
+                ("classes", self.classes.into_value(ctx.as_context_mut())?),
+                ("attributes", self.attributes.into_value(ctx.as_context_mut())?),
+                ("styles", self.styles.into_value(ctx.as_context_mut())?),
+                ("text-content", self.text_content.into_value(ctx.as_context_mut())?),
+                ("inner-html", self.inner_html.into_value(ctx.as_context_mut())?),
+                ("parent-path", self.parent_path.into_value(ctx.as_context_mut())?),
                 ("has-children", Value::Bool(self.has_children)),
                 ("child-count", Value::U32(self.child_count)),
             ],
@@ -1521,6 +1294,10 @@ impl ComponentType for DomElement {
 }
 
 impl UnaryComponentType for DomElement {}
+
+
+
+
 
 #[derive(Debug, Clone)]
 pub struct ScrapeTarget {
@@ -1540,23 +1317,16 @@ impl ComponentType for ScrapeTarget {
                 [
                     ("url", ValueType::String),
                     ("selectors", ValueType::List(ListType::new(Selector::ty()))),
-                    (
-                        "required-fields",
-                        ValueType::List(ListType::new(ValueType::String)),
-                    ),
+                    ("required-fields", ValueType::List(ListType::new(ValueType::String))),
                     ("follow-links", ValueType::Bool),
                     ("max-depth", ValueType::U32),
-                    (
-                        "delay-ms",
-                        ValueType::Option(OptionType::new(ValueType::U32)),
-                    ),
+                    ("delay-ms", ValueType::Option(OptionType::new(ValueType::U32))),
                 ],
-            )
-            .unwrap(),
+            ).unwrap(),
         )
     }
 
-    fn from_value(value: &Value) -> Result<Self> {
+    fn from_value(value: &Value, #[allow(unused)] ctx: impl AsContext) -> Result<Self> {
         if let Value::Record(record) = value {
             let url = record
                 .field("url")
@@ -1577,24 +1347,12 @@ impl ComponentType for ScrapeTarget {
                 .field("delay-ms")
                 .ok_or_else(|| anyhow!("Missing 'delay-ms' field"))?;
 
-            let url = if let Value::String(s) = url {
-                s.to_string()
-            } else {
-                bail!("Expected string")
-            };
-            let selectors = Vec::<Selector>::from_value(&selectors)?;
-            let required_fields = Vec::<String>::from_value(&required_fields)?;
-            let follow_links = if let Value::Bool(x) = follow_links {
-                x
-            } else {
-                bail!("Expected bool")
-            };
-            let max_depth = if let Value::U32(x) = max_depth {
-                x
-            } else {
-                bail!("Expected u32")
-            };
-            let delay_ms = Option::<u32>::from_value(&delay_ms)?;
+            let url = if let Value::String(s) = url { s.to_string() } else { bail!("Expected string") };
+            let selectors = Vec::<Selector>::from_value(&selectors, ctx.as_context())?;
+            let required_fields = Vec::<String>::from_value(&required_fields, ctx.as_context())?;
+            let follow_links = if let Value::Bool(x) = follow_links { x } else { bail!("Expected bool") };
+            let max_depth = if let Value::U32(x) = max_depth { x } else { bail!("Expected u32") };
+            let delay_ms = Option::<u32>::from_value(&delay_ms, ctx.as_context())?;
 
             Ok(ScrapeTarget {
                 url,
@@ -1609,33 +1367,26 @@ impl ComponentType for ScrapeTarget {
         }
     }
 
-    fn into_value(self) -> Result<Value> {
+    fn into_value(self, #[allow(unused)] mut ctx: impl AsContextMut) -> Result<Value> {
         let record = Record::new(
             RecordType::new(
                 None,
                 [
                     ("url", ValueType::String),
                     ("selectors", ValueType::List(ListType::new(Selector::ty()))),
-                    (
-                        "required-fields",
-                        ValueType::List(ListType::new(ValueType::String)),
-                    ),
+                    ("required-fields", ValueType::List(ListType::new(ValueType::String))),
                     ("follow-links", ValueType::Bool),
                     ("max-depth", ValueType::U32),
-                    (
-                        "delay-ms",
-                        ValueType::Option(OptionType::new(ValueType::U32)),
-                    ),
+                    ("delay-ms", ValueType::Option(OptionType::new(ValueType::U32))),
                 ],
-            )
-            .unwrap(),
+            ).unwrap(),
             [
                 ("url", Value::String(self.url.into())),
-                ("selectors", self.selectors.into_value()?),
-                ("required-fields", self.required_fields.into_value()?),
+                ("selectors", self.selectors.into_value(ctx.as_context_mut())?),
+                ("required-fields", self.required_fields.into_value(ctx.as_context_mut())?),
                 ("follow-links", Value::Bool(self.follow_links)),
                 ("max-depth", Value::U32(self.max_depth)),
-                ("delay-ms", self.delay_ms.into_value()?),
+                ("delay-ms", self.delay_ms.into_value(ctx.as_context_mut())?),
             ],
         )?;
         Ok(Value::Record(record))
@@ -1660,23 +1411,16 @@ impl ComponentType for ImageData {
                 None,
                 [
                     ("url", ValueType::String),
-                    (
-                        "alt-text",
-                        ValueType::Option(OptionType::new(ValueType::String)),
-                    ),
+                    ("alt-text", ValueType::Option(OptionType::new(ValueType::String))),
                     ("width", ValueType::Option(OptionType::new(ValueType::U32))),
                     ("height", ValueType::Option(OptionType::new(ValueType::U32))),
-                    (
-                        "format",
-                        ValueType::Option(OptionType::new(ValueType::String)),
-                    ),
+                    ("format", ValueType::Option(OptionType::new(ValueType::String))),
                 ],
-            )
-            .unwrap(),
+            ).unwrap(),
         )
     }
 
-    fn from_value(value: &Value) -> Result<Self> {
+    fn from_value(value: &Value, #[allow(unused)] ctx: impl AsContext) -> Result<Self> {
         if let Value::Record(record) = value {
             let url = record
                 .field("url")
@@ -1694,15 +1438,11 @@ impl ComponentType for ImageData {
                 .field("format")
                 .ok_or_else(|| anyhow!("Missing 'format' field"))?;
 
-            let url = if let Value::String(s) = url {
-                s.to_string()
-            } else {
-                bail!("Expected string")
-            };
-            let alt_text = Option::<String>::from_value(&alt_text)?;
-            let width = Option::<u32>::from_value(&width)?;
-            let height = Option::<u32>::from_value(&height)?;
-            let format = Option::<String>::from_value(&format)?;
+            let url = if let Value::String(s) = url { s.to_string() } else { bail!("Expected string") };
+            let alt_text = Option::<String>::from_value(&alt_text, ctx.as_context())?;
+            let width = Option::<u32>::from_value(&width, ctx.as_context())?;
+            let height = Option::<u32>::from_value(&height, ctx.as_context())?;
+            let format = Option::<String>::from_value(&format, ctx.as_context())?;
 
             Ok(ImageData {
                 url,
@@ -1716,31 +1456,24 @@ impl ComponentType for ImageData {
         }
     }
 
-    fn into_value(self) -> Result<Value> {
+    fn into_value(self, #[allow(unused)] mut ctx: impl AsContextMut) -> Result<Value> {
         let record = Record::new(
             RecordType::new(
                 None,
                 [
                     ("url", ValueType::String),
-                    (
-                        "alt-text",
-                        ValueType::Option(OptionType::new(ValueType::String)),
-                    ),
+                    ("alt-text", ValueType::Option(OptionType::new(ValueType::String))),
                     ("width", ValueType::Option(OptionType::new(ValueType::U32))),
                     ("height", ValueType::Option(OptionType::new(ValueType::U32))),
-                    (
-                        "format",
-                        ValueType::Option(OptionType::new(ValueType::String)),
-                    ),
+                    ("format", ValueType::Option(OptionType::new(ValueType::String))),
                 ],
-            )
-            .unwrap(),
+            ).unwrap(),
             [
                 ("url", Value::String(self.url.into())),
-                ("alt-text", self.alt_text.into_value()?),
-                ("width", self.width.into_value()?),
-                ("height", self.height.into_value()?),
-                ("format", self.format.into_value()?),
+                ("alt-text", self.alt_text.into_value(ctx.as_context_mut())?),
+                ("width", self.width.into_value(ctx.as_context_mut())?),
+                ("height", self.height.into_value(ctx.as_context_mut())?),
+                ("format", self.format.into_value(ctx.as_context_mut())?),
             ],
         )?;
         Ok(Value::Record(record))
@@ -1770,19 +1503,13 @@ impl ComponentType for ExtractedValue {
                     VariantCase::new("boolean", Some(ValueType::Bool)),
                     VariantCase::new("url", Some(ValueType::String)),
                     VariantCase::new("image", Some(ImageData::ty())),
-                    VariantCase::new(
-                        "structured",
-                        Some(ValueType::List(ListType::new(ValueType::Tuple(
-                            TupleType::new(None, [ValueType::String, ValueType::String]),
-                        )))),
-                    ),
+                    VariantCase::new("structured", Some(ValueType::List(ListType::new(ValueType::Tuple(TupleType::new(None, [ValueType::String, ValueType::String])))))),
                 ],
-            )
-            .unwrap(),
+            ).unwrap(),
         )
     }
 
-    fn from_value(value: &Value) -> Result<Self> {
+    fn from_value(value: &Value, #[allow(unused)] ctx: impl AsContext) -> Result<Self> {
         if let Value::Variant(variant) = value {
             let discriminant = variant.discriminant();
             let variant_ty = variant.ty();
@@ -1793,11 +1520,7 @@ impl ComponentType for ExtractedValue {
             match case_name {
                 "text" => {
                     if let Some(payload_value) = payload {
-                        let converted = if let Value::String(s) = payload_value {
-                            s.to_string()
-                        } else {
-                            bail!("Expected string")
-                        };
+                        let converted = if let Value::String(s) = payload_value { s.to_string() } else { bail!("Expected string") };
                         Ok(ExtractedValue::Text(converted))
                     } else {
                         bail!("Expected payload for text case")
@@ -1805,11 +1528,7 @@ impl ComponentType for ExtractedValue {
                 }
                 "number" => {
                     if let Some(payload_value) = payload {
-                        let converted = if let Value::F64(x) = payload_value {
-                            x
-                        } else {
-                            bail!("Expected f64")
-                        };
+                        let converted = if let Value::F64(x) = payload_value { x } else { bail!("Expected f64") };
                         Ok(ExtractedValue::Number(converted))
                     } else {
                         bail!("Expected payload for number case")
@@ -1817,11 +1536,7 @@ impl ComponentType for ExtractedValue {
                 }
                 "boolean" => {
                     if let Some(payload_value) = payload {
-                        let converted = if let Value::Bool(x) = payload_value {
-                            x
-                        } else {
-                            bail!("Expected bool")
-                        };
+                        let converted = if let Value::Bool(x) = payload_value { x } else { bail!("Expected bool") };
                         Ok(ExtractedValue::Boolean(converted))
                     } else {
                         bail!("Expected payload for boolean case")
@@ -1829,11 +1544,7 @@ impl ComponentType for ExtractedValue {
                 }
                 "url" => {
                     if let Some(payload_value) = payload {
-                        let converted = if let Value::String(s) = payload_value {
-                            s.to_string()
-                        } else {
-                            bail!("Expected string")
-                        };
+                        let converted = if let Value::String(s) = payload_value { s.to_string() } else { bail!("Expected string") };
                         Ok(ExtractedValue::Url(converted))
                     } else {
                         bail!("Expected payload for url case")
@@ -1841,7 +1552,7 @@ impl ComponentType for ExtractedValue {
                 }
                 "image" => {
                     if let Some(payload_value) = payload {
-                        let converted = ImageData::from_value(&payload_value)?;
+                        let converted = ImageData::from_value(&payload_value, ctx.as_context())?;
                         Ok(ExtractedValue::Image(converted))
                     } else {
                         bail!("Expected payload for image case")
@@ -1849,7 +1560,7 @@ impl ComponentType for ExtractedValue {
                 }
                 "structured" => {
                     if let Some(payload_value) = payload {
-                        let converted = Vec::<(String, String)>::from_value(&payload_value)?;
+                        let converted = Vec::<(String, String)>::from_value(&payload_value, ctx.as_context())?;
                         Ok(ExtractedValue::Structured(converted))
                     } else {
                         bail!("Expected payload for structured case")
@@ -1862,7 +1573,7 @@ impl ComponentType for ExtractedValue {
         }
     }
 
-    fn into_value(self) -> Result<Value> {
+    fn into_value(self, #[allow(unused)] mut ctx: impl AsContextMut) -> Result<Value> {
         let variant_type = VariantType::new(
             None,
             [
@@ -1871,23 +1582,17 @@ impl ComponentType for ExtractedValue {
                 VariantCase::new("boolean", Some(ValueType::Bool)),
                 VariantCase::new("url", Some(ValueType::String)),
                 VariantCase::new("image", Some(ImageData::ty())),
-                VariantCase::new(
-                    "structured",
-                    Some(ValueType::List(ListType::new(ValueType::Tuple(
-                        TupleType::new(None, [ValueType::String, ValueType::String]),
-                    )))),
-                ),
+                VariantCase::new("structured", Some(ValueType::List(ListType::new(ValueType::Tuple(TupleType::new(None, [ValueType::String, ValueType::String])))))),
             ],
-        )
-        .unwrap();
+        ).unwrap();
 
         let (discriminant, payload) = match self {
             ExtractedValue::Text(val) => (0, Some(Value::String(val.into()))),
             ExtractedValue::Number(val) => (1, Some(Value::F64(val))),
             ExtractedValue::Boolean(val) => (2, Some(Value::Bool(val))),
             ExtractedValue::Url(val) => (3, Some(Value::String(val.into()))),
-            ExtractedValue::Image(val) => (4, Some(val.into_value()?)),
-            ExtractedValue::Structured(val) => (5, Some(val.into_value()?)),
+            ExtractedValue::Image(val) => (4, Some(val.into_value(ctx.as_context_mut())?)),
+            ExtractedValue::Structured(val) => (5, Some(val.into_value(ctx.as_context_mut())?)),
         };
 
         let variant = Variant::new(variant_type, discriminant, payload)?;
@@ -1915,18 +1620,14 @@ impl ComponentType for ExtractedData {
                     ("field-name", ValueType::String),
                     ("value", ExtractedValue::ty()),
                     ("source-url", ValueType::String),
-                    (
-                        "xpath",
-                        ValueType::Option(OptionType::new(ValueType::String)),
-                    ),
+                    ("xpath", ValueType::Option(OptionType::new(ValueType::String))),
                     ("confidence", ValueType::F32),
                 ],
-            )
-            .unwrap(),
+            ).unwrap(),
         )
     }
 
-    fn from_value(value: &Value) -> Result<Self> {
+    fn from_value(value: &Value, #[allow(unused)] ctx: impl AsContext) -> Result<Self> {
         if let Value::Record(record) = value {
             let field_name = record
                 .field("field-name")
@@ -1944,23 +1645,11 @@ impl ComponentType for ExtractedData {
                 .field("confidence")
                 .ok_or_else(|| anyhow!("Missing 'confidence' field"))?;
 
-            let field_name = if let Value::String(s) = field_name {
-                s.to_string()
-            } else {
-                bail!("Expected string")
-            };
-            let value = ExtractedValue::from_value(&value)?;
-            let source_url = if let Value::String(s) = source_url {
-                s.to_string()
-            } else {
-                bail!("Expected string")
-            };
-            let xpath = Option::<String>::from_value(&xpath)?;
-            let confidence = if let Value::F32(x) = confidence {
-                x
-            } else {
-                bail!("Expected f32")
-            };
+            let field_name = if let Value::String(s) = field_name { s.to_string() } else { bail!("Expected string") };
+            let value = ExtractedValue::from_value(&value, ctx.as_context())?;
+            let source_url = if let Value::String(s) = source_url { s.to_string() } else { bail!("Expected string") };
+            let xpath = Option::<String>::from_value(&xpath, ctx.as_context())?;
+            let confidence = if let Value::F32(x) = confidence { x } else { bail!("Expected f32") };
 
             Ok(ExtractedData {
                 field_name,
@@ -1974,7 +1663,7 @@ impl ComponentType for ExtractedData {
         }
     }
 
-    fn into_value(self) -> Result<Value> {
+    fn into_value(self, #[allow(unused)] mut ctx: impl AsContextMut) -> Result<Value> {
         let record = Record::new(
             RecordType::new(
                 None,
@@ -1982,19 +1671,15 @@ impl ComponentType for ExtractedData {
                     ("field-name", ValueType::String),
                     ("value", ExtractedValue::ty()),
                     ("source-url", ValueType::String),
-                    (
-                        "xpath",
-                        ValueType::Option(OptionType::new(ValueType::String)),
-                    ),
+                    ("xpath", ValueType::Option(OptionType::new(ValueType::String))),
                     ("confidence", ValueType::F32),
                 ],
-            )
-            .unwrap(),
+            ).unwrap(),
             [
                 ("field-name", Value::String(self.field_name.into())),
-                ("value", self.value.into_value()?),
+                ("value", self.value.into_value(ctx.as_context_mut())?),
                 ("source-url", Value::String(self.source_url.into())),
-                ("xpath", self.xpath.into_value()?),
+                ("xpath", self.xpath.into_value(ctx.as_context_mut())?),
                 ("confidence", Value::F32(self.confidence)),
             ],
         )?;
@@ -2017,24 +1702,18 @@ pub enum ErrorType {
 
 impl ComponentType for ErrorType {
     fn ty() -> ValueType {
-        ValueType::Enum(
-            EnumType::new(
-                None,
-                [
-                    "network",
-                    "parsing",
-                    "selector",
-                    "timeout",
-                    "rate-limit",
-                    "authentication",
-                    "unknown",
-                ],
-            )
-            .unwrap(),
-        )
+        ValueType::Enum(EnumType::new(None, [
+            "network",
+            "parsing",
+            "selector",
+            "timeout",
+            "rate-limit",
+            "authentication",
+            "unknown",
+        ]).unwrap())
     }
 
-    fn from_value(value: &Value) -> Result<Self> {
+    fn from_value(value: &Value, #[allow(unused)] ctx: impl AsContext) -> Result<Self> {
         if let Value::Enum(enum_val) = value {
             let discriminant = enum_val.discriminant();
             match discriminant {
@@ -2052,20 +1731,16 @@ impl ComponentType for ErrorType {
         }
     }
 
-    fn into_value(self) -> Result<Value> {
-        let enum_type = EnumType::new(
-            None,
-            [
-                "network",
-                "parsing",
-                "selector",
-                "timeout",
-                "rate-limit",
-                "authentication",
-                "unknown",
-            ],
-        )
-        .unwrap();
+    fn into_value(self, #[allow(unused)] mut ctx: impl AsContextMut) -> Result<Value> {
+        let enum_type = EnumType::new(None, [
+            "network",
+            "parsing",
+            "selector",
+            "timeout",
+            "rate-limit",
+            "authentication",
+            "unknown",
+        ]).unwrap();
 
         let discriminant = match self {
             ErrorType::Network => 0,
@@ -2104,12 +1779,11 @@ impl ComponentType for ScrapeError {
                     ("timestamp", ValueType::U64),
                     ("recoverable", ValueType::Bool),
                 ],
-            )
-            .unwrap(),
+            ).unwrap(),
         )
     }
 
-    fn from_value(value: &Value) -> Result<Self> {
+    fn from_value(value: &Value, #[allow(unused)] ctx: impl AsContext) -> Result<Self> {
         if let Value::Record(record) = value {
             let error_type = record
                 .field("error-type")
@@ -2127,23 +1801,11 @@ impl ComponentType for ScrapeError {
                 .field("recoverable")
                 .ok_or_else(|| anyhow!("Missing 'recoverable' field"))?;
 
-            let error_type = ErrorType::from_value(&error_type)?;
-            let message = if let Value::String(s) = message {
-                s.to_string()
-            } else {
-                bail!("Expected string")
-            };
-            let url = Option::<String>::from_value(&url)?;
-            let timestamp = if let Value::U64(x) = timestamp {
-                x
-            } else {
-                bail!("Expected u64")
-            };
-            let recoverable = if let Value::Bool(x) = recoverable {
-                x
-            } else {
-                bail!("Expected bool")
-            };
+            let error_type = ErrorType::from_value(&error_type, ctx.as_context())?;
+            let message = if let Value::String(s) = message { s.to_string() } else { bail!("Expected string") };
+            let url = Option::<String>::from_value(&url, ctx.as_context())?;
+            let timestamp = if let Value::U64(x) = timestamp { x } else { bail!("Expected u64") };
+            let recoverable = if let Value::Bool(x) = recoverable { x } else { bail!("Expected bool") };
 
             Ok(ScrapeError {
                 error_type,
@@ -2157,7 +1819,7 @@ impl ComponentType for ScrapeError {
         }
     }
 
-    fn into_value(self) -> Result<Value> {
+    fn into_value(self, #[allow(unused)] mut ctx: impl AsContextMut) -> Result<Value> {
         let record = Record::new(
             RecordType::new(
                 None,
@@ -2168,12 +1830,11 @@ impl ComponentType for ScrapeError {
                     ("timestamp", ValueType::U64),
                     ("recoverable", ValueType::Bool),
                 ],
-            )
-            .unwrap(),
+            ).unwrap(),
             [
-                ("error-type", self.error_type.into_value()?),
+                ("error-type", self.error_type.into_value(ctx.as_context_mut())?),
                 ("message", Value::String(self.message.into())),
-                ("url", self.url.into_value()?),
+                ("url", self.url.into_value(ctx.as_context_mut())?),
                 ("timestamp", Value::U64(self.timestamp)),
                 ("recoverable", Value::Bool(self.recoverable)),
             ],
@@ -2209,12 +1870,11 @@ impl ComponentType for ScrapeMetadata {
                     ("cache-hits", ValueType::U32),
                     ("retry-count", ValueType::U32),
                 ],
-            )
-            .unwrap(),
+            ).unwrap(),
         )
     }
 
-    fn from_value(value: &Value) -> Result<Self> {
+    fn from_value(value: &Value, #[allow(unused)] ctx: impl AsContext) -> Result<Self> {
         if let Value::Record(record) = value {
             let start_time = record
                 .field("start-time")
@@ -2238,41 +1898,13 @@ impl ComponentType for ScrapeMetadata {
                 .field("retry-count")
                 .ok_or_else(|| anyhow!("Missing 'retry-count' field"))?;
 
-            let start_time = if let Value::U64(x) = start_time {
-                x
-            } else {
-                bail!("Expected u64")
-            };
-            let end_time = if let Value::U64(x) = end_time {
-                x
-            } else {
-                bail!("Expected u64")
-            };
-            let duration_ms = if let Value::U32(x) = duration_ms {
-                x
-            } else {
-                bail!("Expected u32")
-            };
-            let pages_visited = if let Value::U32(x) = pages_visited {
-                x
-            } else {
-                bail!("Expected u32")
-            };
-            let elements_extracted = if let Value::U32(x) = elements_extracted {
-                x
-            } else {
-                bail!("Expected u32")
-            };
-            let cache_hits = if let Value::U32(x) = cache_hits {
-                x
-            } else {
-                bail!("Expected u32")
-            };
-            let retry_count = if let Value::U32(x) = retry_count {
-                x
-            } else {
-                bail!("Expected u32")
-            };
+            let start_time = if let Value::U64(x) = start_time { x } else { bail!("Expected u64") };
+            let end_time = if let Value::U64(x) = end_time { x } else { bail!("Expected u64") };
+            let duration_ms = if let Value::U32(x) = duration_ms { x } else { bail!("Expected u32") };
+            let pages_visited = if let Value::U32(x) = pages_visited { x } else { bail!("Expected u32") };
+            let elements_extracted = if let Value::U32(x) = elements_extracted { x } else { bail!("Expected u32") };
+            let cache_hits = if let Value::U32(x) = cache_hits { x } else { bail!("Expected u32") };
+            let retry_count = if let Value::U32(x) = retry_count { x } else { bail!("Expected u32") };
 
             Ok(ScrapeMetadata {
                 start_time,
@@ -2288,7 +1920,7 @@ impl ComponentType for ScrapeMetadata {
         }
     }
 
-    fn into_value(self) -> Result<Value> {
+    fn into_value(self, #[allow(unused)] mut ctx: impl AsContextMut) -> Result<Value> {
         let record = Record::new(
             RecordType::new(
                 None,
@@ -2301,8 +1933,7 @@ impl ComponentType for ScrapeMetadata {
                     ("cache-hits", ValueType::U32),
                     ("retry-count", ValueType::U32),
                 ],
-            )
-            .unwrap(),
+            ).unwrap(),
             [
                 ("start-time", Value::U64(self.start_time)),
                 ("end-time", Value::U64(self.end_time)),
@@ -2318,6 +1949,8 @@ impl ComponentType for ScrapeMetadata {
 }
 
 impl UnaryComponentType for ScrapeMetadata {}
+
+
 
 #[derive(Debug, Clone)]
 pub struct ScrapingResult {
@@ -2340,12 +1973,11 @@ impl ComponentType for ScrapingResult {
                     ("metadata", ScrapeMetadata::ty()),
                     ("has-related-results", ValueType::Bool),
                 ],
-            )
-            .unwrap(),
+            ).unwrap(),
         )
     }
 
-    fn from_value(value: &Value) -> Result<Self> {
+    fn from_value(value: &Value, #[allow(unused)] ctx: impl AsContext) -> Result<Self> {
         if let Value::Record(record) = value {
             let target = record
                 .field("target")
@@ -2363,15 +1995,11 @@ impl ComponentType for ScrapingResult {
                 .field("has-related-results")
                 .ok_or_else(|| anyhow!("Missing 'has-related-results' field"))?;
 
-            let target = ScrapeTarget::from_value(&target)?;
-            let data = Vec::<ExtractedData>::from_value(&data)?;
-            let errors = Vec::<ScrapeError>::from_value(&errors)?;
-            let metadata = ScrapeMetadata::from_value(&metadata)?;
-            let has_related_results = if let Value::Bool(x) = has_related_results {
-                x
-            } else {
-                bail!("Expected bool")
-            };
+            let target = ScrapeTarget::from_value(&target, ctx.as_context())?;
+            let data = Vec::<ExtractedData>::from_value(&data, ctx.as_context())?;
+            let errors = Vec::<ScrapeError>::from_value(&errors, ctx.as_context())?;
+            let metadata = ScrapeMetadata::from_value(&metadata, ctx.as_context())?;
+            let has_related_results = if let Value::Bool(x) = has_related_results { x } else { bail!("Expected bool") };
 
             Ok(ScrapingResult {
                 target,
@@ -2385,7 +2013,7 @@ impl ComponentType for ScrapingResult {
         }
     }
 
-    fn into_value(self) -> Result<Value> {
+    fn into_value(self, #[allow(unused)] mut ctx: impl AsContextMut) -> Result<Value> {
         let record = Record::new(
             RecordType::new(
                 None,
@@ -2396,13 +2024,12 @@ impl ComponentType for ScrapingResult {
                     ("metadata", ScrapeMetadata::ty()),
                     ("has-related-results", ValueType::Bool),
                 ],
-            )
-            .unwrap(),
+            ).unwrap(),
             [
-                ("target", self.target.into_value()?),
-                ("data", self.data.into_value()?),
-                ("errors", self.errors.into_value()?),
-                ("metadata", self.metadata.into_value()?),
+                ("target", self.target.into_value(ctx.as_context_mut())?),
+                ("data", self.data.into_value(ctx.as_context_mut())?),
+                ("errors", self.errors.into_value(ctx.as_context_mut())?),
+                ("metadata", self.metadata.into_value(ctx.as_context_mut())?),
                 ("has-related-results", Value::Bool(self.has_related_results)),
             ],
         )?;
@@ -2411,6 +2038,8 @@ impl ComponentType for ScrapingResult {
 }
 
 impl UnaryComponentType for ScrapingResult {}
+
+
 
 #[derive(Debug, Clone)]
 pub struct ScrapeStatistics {
@@ -2435,20 +2064,13 @@ impl ComponentType for ScrapeStatistics {
                     ("total-data-extracted", ValueType::U32),
                     ("average-response-time-ms", ValueType::F32),
                     ("cache-hit-rate", ValueType::F32),
-                    (
-                        "error-breakdown",
-                        ValueType::List(ListType::new(ValueType::Tuple(TupleType::new(
-                            None,
-                            [ErrorType::ty(), ValueType::U32],
-                        )))),
-                    ),
+                    ("error-breakdown", ValueType::List(ListType::new(ValueType::Tuple(TupleType::new(None, [ErrorType::ty(), ValueType::U32]))))),
                 ],
-            )
-            .unwrap(),
+            ).unwrap(),
         )
     }
 
-    fn from_value(value: &Value) -> Result<Self> {
+    fn from_value(value: &Value, #[allow(unused)] ctx: impl AsContext) -> Result<Self> {
         if let Value::Record(record) = value {
             let total_requests = record
                 .field("total-requests")
@@ -2472,37 +2094,13 @@ impl ComponentType for ScrapeStatistics {
                 .field("error-breakdown")
                 .ok_or_else(|| anyhow!("Missing 'error-breakdown' field"))?;
 
-            let total_requests = if let Value::U32(x) = total_requests {
-                x
-            } else {
-                bail!("Expected u32")
-            };
-            let successful_requests = if let Value::U32(x) = successful_requests {
-                x
-            } else {
-                bail!("Expected u32")
-            };
-            let failed_requests = if let Value::U32(x) = failed_requests {
-                x
-            } else {
-                bail!("Expected u32")
-            };
-            let total_data_extracted = if let Value::U32(x) = total_data_extracted {
-                x
-            } else {
-                bail!("Expected u32")
-            };
-            let average_response_time_ms = if let Value::F32(x) = average_response_time_ms {
-                x
-            } else {
-                bail!("Expected f32")
-            };
-            let cache_hit_rate = if let Value::F32(x) = cache_hit_rate {
-                x
-            } else {
-                bail!("Expected f32")
-            };
-            let error_breakdown = Vec::<(ErrorType, u32)>::from_value(&error_breakdown)?;
+            let total_requests = if let Value::U32(x) = total_requests { x } else { bail!("Expected u32") };
+            let successful_requests = if let Value::U32(x) = successful_requests { x } else { bail!("Expected u32") };
+            let failed_requests = if let Value::U32(x) = failed_requests { x } else { bail!("Expected u32") };
+            let total_data_extracted = if let Value::U32(x) = total_data_extracted { x } else { bail!("Expected u32") };
+            let average_response_time_ms = if let Value::F32(x) = average_response_time_ms { x } else { bail!("Expected f32") };
+            let cache_hit_rate = if let Value::F32(x) = cache_hit_rate { x } else { bail!("Expected f32") };
+            let error_breakdown = Vec::<(ErrorType, u32)>::from_value(&error_breakdown, ctx.as_context())?;
 
             Ok(ScrapeStatistics {
                 total_requests,
@@ -2518,7 +2116,7 @@ impl ComponentType for ScrapeStatistics {
         }
     }
 
-    fn into_value(self) -> Result<Value> {
+    fn into_value(self, #[allow(unused)] mut ctx: impl AsContextMut) -> Result<Value> {
         let record = Record::new(
             RecordType::new(
                 None,
@@ -2529,30 +2127,17 @@ impl ComponentType for ScrapeStatistics {
                     ("total-data-extracted", ValueType::U32),
                     ("average-response-time-ms", ValueType::F32),
                     ("cache-hit-rate", ValueType::F32),
-                    (
-                        "error-breakdown",
-                        ValueType::List(ListType::new(ValueType::Tuple(TupleType::new(
-                            None,
-                            [ErrorType::ty(), ValueType::U32],
-                        )))),
-                    ),
+                    ("error-breakdown", ValueType::List(ListType::new(ValueType::Tuple(TupleType::new(None, [ErrorType::ty(), ValueType::U32]))))),
                 ],
-            )
-            .unwrap(),
+            ).unwrap(),
             [
                 ("total-requests", Value::U32(self.total_requests)),
                 ("successful-requests", Value::U32(self.successful_requests)),
                 ("failed-requests", Value::U32(self.failed_requests)),
-                (
-                    "total-data-extracted",
-                    Value::U32(self.total_data_extracted),
-                ),
-                (
-                    "average-response-time-ms",
-                    Value::F32(self.average_response_time_ms),
-                ),
+                ("total-data-extracted", Value::U32(self.total_data_extracted)),
+                ("average-response-time-ms", Value::F32(self.average_response_time_ms)),
                 ("cache-hit-rate", Value::F32(self.cache_hit_rate)),
-                ("error-breakdown", self.error_breakdown.into_value()?),
+                ("error-breakdown", self.error_breakdown.into_value(ctx.as_context_mut())?),
             ],
         )?;
         Ok(Value::Record(record))
@@ -2590,12 +2175,11 @@ impl ComponentType for TransformOperation {
                     VariantCase::new("regex", Some(ValueType::String)),
                     VariantCase::new("custom", Some(ValueType::String)),
                 ],
-            )
-            .unwrap(),
+            ).unwrap(),
         )
     }
 
-    fn from_value(value: &Value) -> Result<Self> {
+    fn from_value(value: &Value, #[allow(unused)] ctx: impl AsContext) -> Result<Self> {
         if let Value::Variant(variant) = value {
             let discriminant = variant.discriminant();
             let variant_ty = variant.ty();
@@ -2613,11 +2197,7 @@ impl ComponentType for TransformOperation {
                 "uppercase" => Ok(TransformOperation::Uppercase),
                 "regex" => {
                     if let Some(payload_value) = payload {
-                        let converted = if let Value::String(s) = payload_value {
-                            s.to_string()
-                        } else {
-                            bail!("Expected string")
-                        };
+                        let converted = if let Value::String(s) = payload_value { s.to_string() } else { bail!("Expected string") };
                         Ok(TransformOperation::Regex(converted))
                     } else {
                         bail!("Expected payload for regex case")
@@ -2625,11 +2205,7 @@ impl ComponentType for TransformOperation {
                 }
                 "custom" => {
                     if let Some(payload_value) = payload {
-                        let converted = if let Value::String(s) = payload_value {
-                            s.to_string()
-                        } else {
-                            bail!("Expected string")
-                        };
+                        let converted = if let Value::String(s) = payload_value { s.to_string() } else { bail!("Expected string") };
                         Ok(TransformOperation::Custom(converted))
                     } else {
                         bail!("Expected payload for custom case")
@@ -2642,7 +2218,7 @@ impl ComponentType for TransformOperation {
         }
     }
 
-    fn into_value(self) -> Result<Value> {
+    fn into_value(self, #[allow(unused)] mut ctx: impl AsContextMut) -> Result<Value> {
         let variant_type = VariantType::new(
             None,
             [
@@ -2656,8 +2232,7 @@ impl ComponentType for TransformOperation {
                 VariantCase::new("regex", Some(ValueType::String)),
                 VariantCase::new("custom", Some(ValueType::String)),
             ],
-        )
-        .unwrap();
+        ).unwrap();
 
         let (discriminant, payload) = match self {
             TransformOperation::ExtractText => (0, None),
@@ -2707,12 +2282,11 @@ impl ComponentType for FilterCondition {
                     VariantCase::new("is-empty", None),
                     VariantCase::new("is-not-empty", None),
                 ],
-            )
-            .unwrap(),
+            ).unwrap(),
         )
     }
 
-    fn from_value(value: &Value) -> Result<Self> {
+    fn from_value(value: &Value, #[allow(unused)] ctx: impl AsContext) -> Result<Self> {
         if let Value::Variant(variant) = value {
             let discriminant = variant.discriminant();
             let variant_ty = variant.ty();
@@ -2723,11 +2297,7 @@ impl ComponentType for FilterCondition {
             match case_name {
                 "equals" => {
                     if let Some(payload_value) = payload {
-                        let converted = if let Value::String(s) = payload_value {
-                            s.to_string()
-                        } else {
-                            bail!("Expected string")
-                        };
+                        let converted = if let Value::String(s) = payload_value { s.to_string() } else { bail!("Expected string") };
                         Ok(FilterCondition::Equals(converted))
                     } else {
                         bail!("Expected payload for equals case")
@@ -2735,11 +2305,7 @@ impl ComponentType for FilterCondition {
                 }
                 "contains" => {
                     if let Some(payload_value) = payload {
-                        let converted = if let Value::String(s) = payload_value {
-                            s.to_string()
-                        } else {
-                            bail!("Expected string")
-                        };
+                        let converted = if let Value::String(s) = payload_value { s.to_string() } else { bail!("Expected string") };
                         Ok(FilterCondition::Contains(converted))
                     } else {
                         bail!("Expected payload for contains case")
@@ -2747,11 +2313,7 @@ impl ComponentType for FilterCondition {
                 }
                 "starts-with" => {
                     if let Some(payload_value) = payload {
-                        let converted = if let Value::String(s) = payload_value {
-                            s.to_string()
-                        } else {
-                            bail!("Expected string")
-                        };
+                        let converted = if let Value::String(s) = payload_value { s.to_string() } else { bail!("Expected string") };
                         Ok(FilterCondition::StartsWith(converted))
                     } else {
                         bail!("Expected payload for starts-with case")
@@ -2759,11 +2321,7 @@ impl ComponentType for FilterCondition {
                 }
                 "ends-with" => {
                     if let Some(payload_value) = payload {
-                        let converted = if let Value::String(s) = payload_value {
-                            s.to_string()
-                        } else {
-                            bail!("Expected string")
-                        };
+                        let converted = if let Value::String(s) = payload_value { s.to_string() } else { bail!("Expected string") };
                         Ok(FilterCondition::EndsWith(converted))
                     } else {
                         bail!("Expected payload for ends-with case")
@@ -2771,11 +2329,7 @@ impl ComponentType for FilterCondition {
                 }
                 "matches-regex" => {
                     if let Some(payload_value) = payload {
-                        let converted = if let Value::String(s) = payload_value {
-                            s.to_string()
-                        } else {
-                            bail!("Expected string")
-                        };
+                        let converted = if let Value::String(s) = payload_value { s.to_string() } else { bail!("Expected string") };
                         Ok(FilterCondition::MatchesRegex(converted))
                     } else {
                         bail!("Expected payload for matches-regex case")
@@ -2783,11 +2337,7 @@ impl ComponentType for FilterCondition {
                 }
                 "greater-than" => {
                     if let Some(payload_value) = payload {
-                        let converted = if let Value::F64(x) = payload_value {
-                            x
-                        } else {
-                            bail!("Expected f64")
-                        };
+                        let converted = if let Value::F64(x) = payload_value { x } else { bail!("Expected f64") };
                         Ok(FilterCondition::GreaterThan(converted))
                     } else {
                         bail!("Expected payload for greater-than case")
@@ -2795,11 +2345,7 @@ impl ComponentType for FilterCondition {
                 }
                 "less-than" => {
                     if let Some(payload_value) = payload {
-                        let converted = if let Value::F64(x) = payload_value {
-                            x
-                        } else {
-                            bail!("Expected f64")
-                        };
+                        let converted = if let Value::F64(x) = payload_value { x } else { bail!("Expected f64") };
                         Ok(FilterCondition::LessThan(converted))
                     } else {
                         bail!("Expected payload for less-than case")
@@ -2814,7 +2360,7 @@ impl ComponentType for FilterCondition {
         }
     }
 
-    fn into_value(self) -> Result<Value> {
+    fn into_value(self, #[allow(unused)] mut ctx: impl AsContextMut) -> Result<Value> {
         let variant_type = VariantType::new(
             None,
             [
@@ -2828,8 +2374,7 @@ impl ComponentType for FilterCondition {
                 VariantCase::new("is-empty", None),
                 VariantCase::new("is-not-empty", None),
             ],
-        )
-        .unwrap();
+        ).unwrap();
 
         let (discriminant, payload) = match self {
             FilterCondition::Equals(val) => (0, Some(Value::String(val.into()))),
@@ -2865,12 +2410,11 @@ impl ComponentType for FilterRule {
                     ("field", ValueType::String),
                     ("condition", FilterCondition::ty()),
                 ],
-            )
-            .unwrap(),
+            ).unwrap(),
         )
     }
 
-    fn from_value(value: &Value) -> Result<Self> {
+    fn from_value(value: &Value, #[allow(unused)] ctx: impl AsContext) -> Result<Self> {
         if let Value::Record(record) = value {
             let field = record
                 .field("field")
@@ -2879,20 +2423,19 @@ impl ComponentType for FilterRule {
                 .field("condition")
                 .ok_or_else(|| anyhow!("Missing 'condition' field"))?;
 
-            let field = if let Value::String(s) = field {
-                s.to_string()
-            } else {
-                bail!("Expected string")
-            };
-            let condition = FilterCondition::from_value(&condition)?;
+            let field = if let Value::String(s) = field { s.to_string() } else { bail!("Expected string") };
+            let condition = FilterCondition::from_value(&condition, ctx.as_context())?;
 
-            Ok(FilterRule { field, condition })
+            Ok(FilterRule {
+                field,
+                condition,
+            })
         } else {
             bail!("Expected Record value")
         }
     }
 
-    fn into_value(self) -> Result<Value> {
+    fn into_value(self, #[allow(unused)] mut ctx: impl AsContextMut) -> Result<Value> {
         let record = Record::new(
             RecordType::new(
                 None,
@@ -2900,11 +2443,10 @@ impl ComponentType for FilterRule {
                     ("field", ValueType::String),
                     ("condition", FilterCondition::ty()),
                 ],
-            )
-            .unwrap(),
+            ).unwrap(),
             [
                 ("field", Value::String(self.field.into())),
-                ("condition", self.condition.into_value()?),
+                ("condition", self.condition.into_value(ctx.as_context_mut())?),
             ],
         )?;
         Ok(Value::Record(record))
@@ -2927,25 +2469,19 @@ pub enum ValidationType {
 
 impl ComponentType for ValidationType {
     fn ty() -> ValueType {
-        ValueType::Enum(
-            EnumType::new(
-                None,
-                [
-                    "required",
-                    "email",
-                    "url",
-                    "numeric",
-                    "date",
-                    "length-min",
-                    "length-max",
-                    "pattern",
-                ],
-            )
-            .unwrap(),
-        )
+        ValueType::Enum(EnumType::new(None, [
+            "required",
+            "email",
+            "url",
+            "numeric",
+            "date",
+            "length-min",
+            "length-max",
+            "pattern",
+        ]).unwrap())
     }
 
-    fn from_value(value: &Value) -> Result<Self> {
+    fn from_value(value: &Value, #[allow(unused)] ctx: impl AsContext) -> Result<Self> {
         if let Value::Enum(enum_val) = value {
             let discriminant = enum_val.discriminant();
             match discriminant {
@@ -2964,21 +2500,17 @@ impl ComponentType for ValidationType {
         }
     }
 
-    fn into_value(self) -> Result<Value> {
-        let enum_type = EnumType::new(
-            None,
-            [
-                "required",
-                "email",
-                "url",
-                "numeric",
-                "date",
-                "length-min",
-                "length-max",
-                "pattern",
-            ],
-        )
-        .unwrap();
+    fn into_value(self, #[allow(unused)] mut ctx: impl AsContextMut) -> Result<Value> {
+        let enum_type = EnumType::new(None, [
+            "required",
+            "email",
+            "url",
+            "numeric",
+            "date",
+            "length-min",
+            "length-max",
+            "pattern",
+        ]).unwrap();
 
         let discriminant = match self {
             ValidationType::Required => 0,
@@ -3014,12 +2546,11 @@ impl ComponentType for ValidationRule {
                     ("rule-type", ValidationType::ty()),
                     ("error-message", ValueType::String),
                 ],
-            )
-            .unwrap(),
+            ).unwrap(),
         )
     }
 
-    fn from_value(value: &Value) -> Result<Self> {
+    fn from_value(value: &Value, #[allow(unused)] ctx: impl AsContext) -> Result<Self> {
         if let Value::Record(record) = value {
             let field = record
                 .field("field")
@@ -3031,17 +2562,9 @@ impl ComponentType for ValidationRule {
                 .field("error-message")
                 .ok_or_else(|| anyhow!("Missing 'error-message' field"))?;
 
-            let field = if let Value::String(s) = field {
-                s.to_string()
-            } else {
-                bail!("Expected string")
-            };
-            let rule_type = ValidationType::from_value(&rule_type)?;
-            let error_message = if let Value::String(s) = error_message {
-                s.to_string()
-            } else {
-                bail!("Expected string")
-            };
+            let field = if let Value::String(s) = field { s.to_string() } else { bail!("Expected string") };
+            let rule_type = ValidationType::from_value(&rule_type, ctx.as_context())?;
+            let error_message = if let Value::String(s) = error_message { s.to_string() } else { bail!("Expected string") };
 
             Ok(ValidationRule {
                 field,
@@ -3053,7 +2576,7 @@ impl ComponentType for ValidationRule {
         }
     }
 
-    fn into_value(self) -> Result<Value> {
+    fn into_value(self, #[allow(unused)] mut ctx: impl AsContextMut) -> Result<Value> {
         let record = Record::new(
             RecordType::new(
                 None,
@@ -3062,11 +2585,10 @@ impl ComponentType for ValidationRule {
                     ("rule-type", ValidationType::ty()),
                     ("error-message", ValueType::String),
                 ],
-            )
-            .unwrap(),
+            ).unwrap(),
             [
                 ("field", Value::String(self.field.into())),
-                ("rule-type", self.rule_type.into_value()?),
+                ("rule-type", self.rule_type.into_value(ctx.as_context_mut())?),
                 ("error-message", Value::String(self.error_message.into())),
             ],
         )?;
@@ -3075,6 +2597,9 @@ impl ComponentType for ValidationRule {
 }
 
 impl UnaryComponentType for ValidationRule {}
+
+
+
 
 #[derive(Debug, Clone)]
 pub struct PipelineStage {
@@ -3091,22 +2616,15 @@ impl ComponentType for PipelineStage {
                 None,
                 [
                     ("name", ValueType::String),
-                    (
-                        "transforms",
-                        ValueType::List(ListType::new(TransformOperation::ty())),
-                    ),
+                    ("transforms", ValueType::List(ListType::new(TransformOperation::ty()))),
                     ("filters", ValueType::List(ListType::new(FilterRule::ty()))),
-                    (
-                        "validators",
-                        ValueType::List(ListType::new(ValidationRule::ty())),
-                    ),
+                    ("validators", ValueType::List(ListType::new(ValidationRule::ty()))),
                 ],
-            )
-            .unwrap(),
+            ).unwrap(),
         )
     }
 
-    fn from_value(value: &Value) -> Result<Self> {
+    fn from_value(value: &Value, #[allow(unused)] ctx: impl AsContext) -> Result<Self> {
         if let Value::Record(record) = value {
             let name = record
                 .field("name")
@@ -3121,14 +2639,10 @@ impl ComponentType for PipelineStage {
                 .field("validators")
                 .ok_or_else(|| anyhow!("Missing 'validators' field"))?;
 
-            let name = if let Value::String(s) = name {
-                s.to_string()
-            } else {
-                bail!("Expected string")
-            };
-            let transforms = Vec::<TransformOperation>::from_value(&transforms)?;
-            let filters = Vec::<FilterRule>::from_value(&filters)?;
-            let validators = Vec::<ValidationRule>::from_value(&validators)?;
+            let name = if let Value::String(s) = name { s.to_string() } else { bail!("Expected string") };
+            let transforms = Vec::<TransformOperation>::from_value(&transforms, ctx.as_context())?;
+            let filters = Vec::<FilterRule>::from_value(&filters, ctx.as_context())?;
+            let validators = Vec::<ValidationRule>::from_value(&validators, ctx.as_context())?;
 
             Ok(PipelineStage {
                 name,
@@ -3141,29 +2655,22 @@ impl ComponentType for PipelineStage {
         }
     }
 
-    fn into_value(self) -> Result<Value> {
+    fn into_value(self, #[allow(unused)] mut ctx: impl AsContextMut) -> Result<Value> {
         let record = Record::new(
             RecordType::new(
                 None,
                 [
                     ("name", ValueType::String),
-                    (
-                        "transforms",
-                        ValueType::List(ListType::new(TransformOperation::ty())),
-                    ),
+                    ("transforms", ValueType::List(ListType::new(TransformOperation::ty()))),
                     ("filters", ValueType::List(ListType::new(FilterRule::ty()))),
-                    (
-                        "validators",
-                        ValueType::List(ListType::new(ValidationRule::ty())),
-                    ),
+                    ("validators", ValueType::List(ListType::new(ValidationRule::ty()))),
                 ],
-            )
-            .unwrap(),
+            ).unwrap(),
             [
                 ("name", Value::String(self.name.into())),
-                ("transforms", self.transforms.into_value()?),
-                ("filters", self.filters.into_value()?),
-                ("validators", self.validators.into_value()?),
+                ("transforms", self.transforms.into_value(ctx.as_context_mut())?),
+                ("filters", self.filters.into_value(ctx.as_context_mut())?),
+                ("validators", self.validators.into_value(ctx.as_context_mut())?),
             ],
         )?;
         Ok(Value::Record(record))
@@ -3182,16 +2689,15 @@ pub enum ErrorHandlingStrategy {
 
 impl ComponentType for ErrorHandlingStrategy {
     fn ty() -> ValueType {
-        ValueType::Enum(
-            EnumType::new(
-                None,
-                ["fail-fast", "skip-errors", "collect-errors", "retry-failed"],
-            )
-            .unwrap(),
-        )
+        ValueType::Enum(EnumType::new(None, [
+            "fail-fast",
+            "skip-errors",
+            "collect-errors",
+            "retry-failed",
+        ]).unwrap())
     }
 
-    fn from_value(value: &Value) -> Result<Self> {
+    fn from_value(value: &Value, #[allow(unused)] ctx: impl AsContext) -> Result<Self> {
         if let Value::Enum(enum_val) = value {
             let discriminant = enum_val.discriminant();
             match discriminant {
@@ -3206,12 +2712,13 @@ impl ComponentType for ErrorHandlingStrategy {
         }
     }
 
-    fn into_value(self) -> Result<Value> {
-        let enum_type = EnumType::new(
-            None,
-            ["fail-fast", "skip-errors", "collect-errors", "retry-failed"],
-        )
-        .unwrap();
+    fn into_value(self, #[allow(unused)] mut ctx: impl AsContextMut) -> Result<Value> {
+        let enum_type = EnumType::new(None, [
+            "fail-fast",
+            "skip-errors",
+            "collect-errors",
+            "retry-failed",
+        ]).unwrap();
 
         let discriminant = match self {
             ErrorHandlingStrategy::FailFast => 0,
@@ -3236,10 +2743,15 @@ pub enum OutputFormat {
 
 impl ComponentType for OutputFormat {
     fn ty() -> ValueType {
-        ValueType::Enum(EnumType::new(None, ["json", "csv", "xml", "custom"]).unwrap())
+        ValueType::Enum(EnumType::new(None, [
+            "json",
+            "csv",
+            "xml",
+            "custom",
+        ]).unwrap())
     }
 
-    fn from_value(value: &Value) -> Result<Self> {
+    fn from_value(value: &Value, #[allow(unused)] ctx: impl AsContext) -> Result<Self> {
         if let Value::Enum(enum_val) = value {
             let discriminant = enum_val.discriminant();
             match discriminant {
@@ -3254,8 +2766,13 @@ impl ComponentType for OutputFormat {
         }
     }
 
-    fn into_value(self) -> Result<Value> {
-        let enum_type = EnumType::new(None, ["json", "csv", "xml", "custom"]).unwrap();
+    fn into_value(self, #[allow(unused)] mut ctx: impl AsContextMut) -> Result<Value> {
+        let enum_type = EnumType::new(None, [
+            "json",
+            "csv",
+            "xml",
+            "custom",
+        ]).unwrap();
 
         let discriminant = match self {
             OutputFormat::Json => 0,
@@ -3269,6 +2786,7 @@ impl ComponentType for OutputFormat {
 }
 
 impl UnaryComponentType for OutputFormat {}
+
 
 #[derive(Debug, Clone)]
 pub struct DataPipeline {
@@ -3285,19 +2803,15 @@ impl ComponentType for DataPipeline {
                 None,
                 [
                     ("name", ValueType::String),
-                    (
-                        "stages",
-                        ValueType::List(ListType::new(PipelineStage::ty())),
-                    ),
+                    ("stages", ValueType::List(ListType::new(PipelineStage::ty()))),
                     ("error-handling", ErrorHandlingStrategy::ty()),
                     ("output-format", OutputFormat::ty()),
                 ],
-            )
-            .unwrap(),
+            ).unwrap(),
         )
     }
 
-    fn from_value(value: &Value) -> Result<Self> {
+    fn from_value(value: &Value, #[allow(unused)] ctx: impl AsContext) -> Result<Self> {
         if let Value::Record(record) = value {
             let name = record
                 .field("name")
@@ -3312,14 +2826,10 @@ impl ComponentType for DataPipeline {
                 .field("output-format")
                 .ok_or_else(|| anyhow!("Missing 'output-format' field"))?;
 
-            let name = if let Value::String(s) = name {
-                s.to_string()
-            } else {
-                bail!("Expected string")
-            };
-            let stages = Vec::<PipelineStage>::from_value(&stages)?;
-            let error_handling = ErrorHandlingStrategy::from_value(&error_handling)?;
-            let output_format = OutputFormat::from_value(&output_format)?;
+            let name = if let Value::String(s) = name { s.to_string() } else { bail!("Expected string") };
+            let stages = Vec::<PipelineStage>::from_value(&stages, ctx.as_context())?;
+            let error_handling = ErrorHandlingStrategy::from_value(&error_handling, ctx.as_context())?;
+            let output_format = OutputFormat::from_value(&output_format, ctx.as_context())?;
 
             Ok(DataPipeline {
                 name,
@@ -3332,26 +2842,22 @@ impl ComponentType for DataPipeline {
         }
     }
 
-    fn into_value(self) -> Result<Value> {
+    fn into_value(self, #[allow(unused)] mut ctx: impl AsContextMut) -> Result<Value> {
         let record = Record::new(
             RecordType::new(
                 None,
                 [
                     ("name", ValueType::String),
-                    (
-                        "stages",
-                        ValueType::List(ListType::new(PipelineStage::ty())),
-                    ),
+                    ("stages", ValueType::List(ListType::new(PipelineStage::ty()))),
                     ("error-handling", ErrorHandlingStrategy::ty()),
                     ("output-format", OutputFormat::ty()),
                 ],
-            )
-            .unwrap(),
+            ).unwrap(),
             [
                 ("name", Value::String(self.name.into())),
-                ("stages", self.stages.into_value()?),
-                ("error-handling", self.error_handling.into_value()?),
-                ("output-format", self.output_format.into_value()?),
+                ("stages", self.stages.into_value(ctx.as_context_mut())?),
+                ("error-handling", self.error_handling.into_value(ctx.as_context_mut())?),
+                ("output-format", self.output_format.into_value(ctx.as_context_mut())?),
             ],
         )?;
         Ok(Value::Record(record))
@@ -3359,6 +2865,23 @@ impl ComponentType for DataPipeline {
 }
 
 impl UnaryComponentType for DataPipeline {}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 // ========== Host Imports ==========
 
@@ -3372,18 +2895,16 @@ pub trait HttpHost {
 /// Host trait for interface: example:webscraper/dom
 pub trait DomHost {
     fn parse_html(&mut self, html: String) -> Result<Vec<DomElement>, String>;
-    fn query_selector(
-        &mut self,
-        root: DomElement,
-        selector: Selector,
-    ) -> Result<Vec<DomElement>, String>;
+    fn query_selector(&mut self, root: DomElement, selector: Selector) -> Result<Vec<DomElement>, String>;
 }
 
 /// Host trait for interface: example:webscraper/scraper
-pub trait ScraperHost {}
+pub trait ScraperHost {
+}
 
 /// Host trait for interface: example:webscraper/pipeline
-pub trait PipelineHost {}
+pub trait PipelineHost {
+}
 
 pub mod imports {
     use super::*;
@@ -3402,16 +2923,13 @@ pub mod imports {
                 Func::new(
                     &mut *store,
                     FuncType::new(
-                        [HttpRequest::ty()],
-                        [ValueType::Result(ResultType::new(
-                            Some(HttpResponse::ty()),
-                            Some(ValueType::String),
-                        ))],
+                        [HttpRequest::ty(), ],
+                        [ValueType::Result(ResultType::new(Some(HttpResponse::ty()), Some(ValueType::String)))],
                     ),
                     |mut ctx, params, results| {
-                        let request = HttpRequest::from_value(&params[0])?;
+                        let request = HttpRequest::from_value(&params[0], ctx.as_context())?;
                         let result = ctx.data_mut().make_request(request);
-                        results[0] = result.into_value()?;
+                        results[0] = result.into_value(ctx.as_context_mut())?;
                         Ok(())
                     },
                 ),
@@ -3423,13 +2941,12 @@ pub mod imports {
                 "log-info",
                 Func::new(
                     &mut *store,
-                    FuncType::new([ValueType::String], []),
+                    FuncType::new(
+                        [ValueType::String, ],
+                        [],
+                    ),
                     |mut ctx, params, _results| {
-                        let message = if let Value::String(s) = &params[0] {
-                            s.to_string()
-                        } else {
-                            bail!("Expected string")
-                        };
+                        let message = if let Value::String(s) = &params[0] { s.to_string() } else { bail!("Expected string") };
                         ctx.data_mut().log_info(message);
                         Ok(())
                     },
@@ -3442,13 +2959,12 @@ pub mod imports {
                 "log-error",
                 Func::new(
                     &mut *store,
-                    FuncType::new([ValueType::String], []),
+                    FuncType::new(
+                        [ValueType::String, ],
+                        [],
+                    ),
                     |mut ctx, params, _results| {
-                        let message = if let Value::String(s) = &params[0] {
-                            s.to_string()
-                        } else {
-                            bail!("Expected string")
-                        };
+                        let message = if let Value::String(s) = &params[0] { s.to_string() } else { bail!("Expected string") };
                         ctx.data_mut().log_error(message);
                         Ok(())
                     },
@@ -3473,20 +2989,13 @@ pub mod imports {
                 Func::new(
                     &mut *store,
                     FuncType::new(
-                        [ValueType::String],
-                        [ValueType::Result(ResultType::new(
-                            Some(ValueType::List(ListType::new(DomElement::ty()))),
-                            Some(ValueType::String),
-                        ))],
+                        [ValueType::String, ],
+                        [ValueType::Result(ResultType::new(Some(ValueType::List(ListType::new(DomElement::ty()))), Some(ValueType::String)))],
                     ),
                     |mut ctx, params, results| {
-                        let html = if let Value::String(s) = &params[0] {
-                            s.to_string()
-                        } else {
-                            bail!("Expected string")
-                        };
+                        let html = if let Value::String(s) = &params[0] { s.to_string() } else { bail!("Expected string") };
                         let result = ctx.data_mut().parse_html(html);
-                        results[0] = result.into_value()?;
+                        results[0] = result.into_value(ctx.as_context_mut())?;
                         Ok(())
                     },
                 ),
@@ -3499,17 +3008,14 @@ pub mod imports {
                 Func::new(
                     &mut *store,
                     FuncType::new(
-                        [DomElement::ty(), Selector::ty()],
-                        [ValueType::Result(ResultType::new(
-                            Some(ValueType::List(ListType::new(DomElement::ty()))),
-                            Some(ValueType::String),
-                        ))],
+                        [DomElement::ty(), Selector::ty(), ],
+                        [ValueType::Result(ResultType::new(Some(ValueType::List(ListType::new(DomElement::ty()))), Some(ValueType::String)))],
                     ),
                     |mut ctx, params, results| {
-                        let root = DomElement::from_value(&params[0])?;
-                        let selector = Selector::from_value(&params[1])?;
+                        let root = DomElement::from_value(&params[0], ctx.as_context())?;
+                        let selector = Selector::from_value(&params[1], ctx.as_context())?;
                         let result = ctx.data_mut().query_selector(root, selector);
-                        results[0] = result.into_value()?;
+                        results[0] = result.into_value(ctx.as_context_mut())?;
                         Ok(())
                     },
                 ),
@@ -3540,6 +3046,7 @@ pub mod imports {
 
         Ok(())
     }
+
 }
 
 // ========== Guest Exports ==========
@@ -3553,12 +3060,7 @@ pub mod exports_exports {
     pub fn get_scrape_website<T, E: backend::WasmEngine>(
         instance: &Instance,
         _store: &mut Store<T, E>,
-    ) -> Result<
-        TypedFunc<
-            (ScrapeTarget, Option<DataPipeline>, Vec<HttpHeader>),
-            Result<ScrapingResult, String>,
-        >,
-    > {
+    ) -> Result<TypedFunc<(ScrapeTarget, Option<DataPipeline>, Vec<HttpHeader>), Result<ScrapingResult, String>>> {
         let interface = instance
             .exports()
             .instance(&INTERFACE_NAME.try_into().unwrap())
@@ -3574,12 +3076,7 @@ pub mod exports_exports {
     pub fn get_scrape_batch<T, E: backend::WasmEngine>(
         instance: &Instance,
         _store: &mut Store<T, E>,
-    ) -> Result<
-        TypedFunc<
-            (Vec<ScrapeTarget>, Option<DataPipeline>),
-            Result<Vec<Result<ScrapingResult, String>>, String>,
-        >,
-    > {
+    ) -> Result<TypedFunc<(Vec<ScrapeTarget>, Option<DataPipeline>), Result<Vec<Result<ScrapingResult, String>>, String>>> {
         let interface = instance
             .exports()
             .instance(&INTERFACE_NAME.try_into().unwrap())
@@ -3611,8 +3108,7 @@ pub mod exports_exports {
     pub fn get_process_data<T, E: backend::WasmEngine>(
         instance: &Instance,
         _store: &mut Store<T, E>,
-    ) -> Result<TypedFunc<(Vec<ExtractedData>, DataPipeline), Result<Vec<ExtractedData>, String>>>
-    {
+    ) -> Result<TypedFunc<(Vec<ExtractedData>, DataPipeline), Result<Vec<ExtractedData>, String>>> {
         let interface = instance
             .exports()
             .instance(&INTERFACE_NAME.try_into().unwrap())
@@ -3639,4 +3135,6 @@ pub mod exports_exports {
             .ok_or_else(|| anyhow!("Function 'transform-response' not found"))?
             .typed::<(HttpResponse, Vec<Selector>), Result<Vec<ExtractedData>, String>>()
     }
+
 }
+

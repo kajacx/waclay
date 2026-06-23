@@ -5,9 +5,15 @@
 
 use anyhow::*;
 use waclay::*;
-use wasm_runtime_layer::backend;
+use wasm_runtime_layer::{backend};
+
 
 // ========== Type Definitions ==========
+
+
+
+
+
 
 // ========== Host Imports ==========
 
@@ -37,13 +43,12 @@ pub mod imports {
                 "log",
                 Func::new(
                     &mut *store,
-                    FuncType::new([ValueType::String], []),
+                    FuncType::new(
+                        [ValueType::String, ],
+                        [],
+                    ),
                     |mut ctx, params, _results| {
-                        let message = if let Value::String(s) = &params[0] {
-                            s.to_string()
-                        } else {
-                            bail!("Expected string")
-                        };
+                        let message = if let Value::String(s) = &params[0] { s.to_string() } else { bail!("Expected string") };
                         ctx.data_mut().log(message);
                         Ok(())
                     },
@@ -57,17 +62,13 @@ pub mod imports {
                 Func::new(
                     &mut *store,
                     FuncType::new(
-                        [ValueType::Bool],
+                        [ValueType::Bool, ],
                         [ValueType::Option(OptionType::new(ValueType::String))],
                     ),
                     |mut ctx, params, results| {
-                        let is_some = if let Value::Bool(x) = &params[0] {
-                            *x
-                        } else {
-                            bail!("Expected bool")
-                        };
+                        let is_some = if let Value::Bool(x) = &params[0] { *x } else { bail!("Expected bool") };
                         let result = ctx.data_mut().result_option(is_some);
-                        results[0] = result.into_value()?;
+                        results[0] = result.into_value(ctx.as_context_mut())?;
                         Ok(())
                     },
                 ),
@@ -80,20 +81,13 @@ pub mod imports {
                 Func::new(
                     &mut *store,
                     FuncType::new(
-                        [ValueType::Bool],
-                        [ValueType::Result(ResultType::new(
-                            Some(ValueType::String),
-                            Some(ValueType::String),
-                        ))],
+                        [ValueType::Bool, ],
+                        [ValueType::Result(ResultType::new(Some(ValueType::String), Some(ValueType::String)))],
                     ),
                     |mut ctx, params, results| {
-                        let is_ok = if let Value::Bool(x) = &params[0] {
-                            *x
-                        } else {
-                            bail!("Expected bool")
-                        };
+                        let is_ok = if let Value::Bool(x) = &params[0] { *x } else { bail!("Expected bool") };
                         let result = ctx.data_mut().result_result(is_ok);
-                        results[0] = result.into_value()?;
+                        results[0] = result.into_value(ctx.as_context_mut())?;
                         Ok(())
                     },
                 ),
@@ -106,20 +100,13 @@ pub mod imports {
                 Func::new(
                     &mut *store,
                     FuncType::new(
-                        [ValueType::Bool],
-                        [ValueType::Result(ResultType::new(
-                            Some(ValueType::String),
-                            None,
-                        ))],
+                        [ValueType::Bool, ],
+                        [ValueType::Result(ResultType::new(Some(ValueType::String), None))],
                     ),
                     |mut ctx, params, results| {
-                        let is_ok = if let Value::Bool(x) = &params[0] {
-                            *x
-                        } else {
-                            bail!("Expected bool")
-                        };
+                        let is_ok = if let Value::Bool(x) = &params[0] { *x } else { bail!("Expected bool") };
                         let result = ctx.data_mut().result_result_ok(is_ok);
-                        results[0] = result.into_value()?;
+                        results[0] = result.into_value(ctx.as_context_mut())?;
                         Ok(())
                     },
                 ),
@@ -132,20 +119,13 @@ pub mod imports {
                 Func::new(
                     &mut *store,
                     FuncType::new(
-                        [ValueType::Bool],
-                        [ValueType::Result(ResultType::new(
-                            None,
-                            Some(ValueType::String),
-                        ))],
+                        [ValueType::Bool, ],
+                        [ValueType::Result(ResultType::new(None, Some(ValueType::String)))],
                     ),
                     |mut ctx, params, results| {
-                        let is_ok = if let Value::Bool(x) = &params[0] {
-                            *x
-                        } else {
-                            bail!("Expected bool")
-                        };
+                        let is_ok = if let Value::Bool(x) = &params[0] { *x } else { bail!("Expected bool") };
                         let result = ctx.data_mut().result_result_err(is_ok);
-                        results[0] = result.into_value()?;
+                        results[0] = result.into_value(ctx.as_context_mut())?;
                         Ok(())
                     },
                 ),
@@ -158,17 +138,13 @@ pub mod imports {
                 Func::new(
                     &mut *store,
                     FuncType::new(
-                        [ValueType::Bool],
+                        [ValueType::Bool, ],
                         [ValueType::Result(ResultType::new(None, None))],
                     ),
                     |mut ctx, params, results| {
-                        let is_ok = if let Value::Bool(x) = &params[0] {
-                            *x
-                        } else {
-                            bail!("Expected bool")
-                        };
+                        let is_ok = if let Value::Bool(x) = &params[0] { *x } else { bail!("Expected bool") };
                         let result = ctx.data_mut().result_result_none(is_ok);
-                        results[0] = result.into_value()?;
+                        results[0] = result.into_value(ctx.as_context_mut())?;
                         Ok(())
                     },
                 ),
@@ -177,6 +153,7 @@ pub mod imports {
 
         Ok(())
     }
+
 }
 
 // ========== Guest Exports ==========
@@ -201,4 +178,6 @@ pub mod exports_run {
             .ok_or_else(|| anyhow!("Function 'start' not found"))?
             .typed::<(), ()>()
     }
+
 }
+

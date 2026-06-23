@@ -5,9 +5,11 @@
 
 use anyhow::*;
 use waclay::*;
-use wasm_runtime_layer::backend;
+use wasm_runtime_layer::{backend};
+
 
 // ========== Type Definitions ==========
+
 
 #[derive(Debug, Clone)]
 pub enum Status {
@@ -25,21 +27,14 @@ impl ComponentType for Status {
                 [
                     VariantCase::new("pending", None),
                     VariantCase::new("running", Some(ValueType::String)),
-                    VariantCase::new(
-                        "completed",
-                        Some(ValueType::Result(ResultType::new(
-                            Some(ValueType::String),
-                            Some(ValueType::String),
-                        ))),
-                    ),
+                    VariantCase::new("completed", Some(ValueType::Result(ResultType::new(Some(ValueType::String), Some(ValueType::String))))),
                     VariantCase::new("failed", Some(ValueType::String)),
                 ],
-            )
-            .unwrap(),
+            ).unwrap(),
         )
     }
 
-    fn from_value(value: &Value) -> Result<Self> {
+    fn from_value(value: &Value, #[allow(unused)] ctx: impl AsContext) -> Result<Self> {
         if let Value::Variant(variant) = value {
             let discriminant = variant.discriminant();
             let variant_ty = variant.ty();
@@ -51,11 +46,7 @@ impl ComponentType for Status {
                 "pending" => Ok(Status::Pending),
                 "running" => {
                     if let Some(payload_value) = payload {
-                        let converted = if let Value::String(s) = payload_value {
-                            s.to_string()
-                        } else {
-                            bail!("Expected string")
-                        };
+                        let converted = if let Value::String(s) = payload_value { s.to_string() } else { bail!("Expected string") };
                         Ok(Status::Running(converted))
                     } else {
                         bail!("Expected payload for running case")
@@ -63,7 +54,7 @@ impl ComponentType for Status {
                 }
                 "completed" => {
                     if let Some(payload_value) = payload {
-                        let converted = Result::<String, String>::from_value(&payload_value)?;
+                        let converted = Result::<String, String>::from_value(&payload_value, ctx.as_context())?;
                         Ok(Status::Completed(converted))
                     } else {
                         bail!("Expected payload for completed case")
@@ -71,11 +62,7 @@ impl ComponentType for Status {
                 }
                 "failed" => {
                     if let Some(payload_value) = payload {
-                        let converted = if let Value::String(s) = payload_value {
-                            s.to_string()
-                        } else {
-                            bail!("Expected string")
-                        };
+                        let converted = if let Value::String(s) = payload_value { s.to_string() } else { bail!("Expected string") };
                         Ok(Status::Failed(converted))
                     } else {
                         bail!("Expected payload for failed case")
@@ -88,28 +75,21 @@ impl ComponentType for Status {
         }
     }
 
-    fn into_value(self) -> Result<Value> {
+    fn into_value(self, #[allow(unused)] mut ctx: impl AsContextMut) -> Result<Value> {
         let variant_type = VariantType::new(
             None,
             [
                 VariantCase::new("pending", None),
                 VariantCase::new("running", Some(ValueType::String)),
-                VariantCase::new(
-                    "completed",
-                    Some(ValueType::Result(ResultType::new(
-                        Some(ValueType::String),
-                        Some(ValueType::String),
-                    ))),
-                ),
+                VariantCase::new("completed", Some(ValueType::Result(ResultType::new(Some(ValueType::String), Some(ValueType::String))))),
                 VariantCase::new("failed", Some(ValueType::String)),
             ],
-        )
-        .unwrap();
+        ).unwrap();
 
         let (discriminant, payload) = match self {
             Status::Pending => (0, None),
             Status::Running(val) => (1, Some(Value::String(val.into()))),
-            Status::Completed(val) => (2, Some(val.into_value()?)),
+            Status::Completed(val) => (2, Some(val.into_value(ctx.as_context_mut())?)),
             Status::Failed(val) => (3, Some(Value::String(val.into()))),
         };
 
@@ -142,4 +122,6 @@ pub mod exports_exports {
             .ok_or_else(|| anyhow!("Function 'get-status' not found"))?
             .typed::<(), Status>()
     }
+
 }
+

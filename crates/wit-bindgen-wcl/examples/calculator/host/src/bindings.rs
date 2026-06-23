@@ -5,7 +5,8 @@
 
 use anyhow::*;
 use waclay::*;
-use wasm_runtime_layer::backend;
+use wasm_runtime_layer::{backend};
+
 
 // ========== Type Definitions ==========
 
@@ -18,10 +19,14 @@ pub enum LogLevel {
 
 impl ComponentType for LogLevel {
     fn ty() -> ValueType {
-        ValueType::Enum(EnumType::new(None, ["info", "warning", "error"]).unwrap())
+        ValueType::Enum(EnumType::new(None, [
+            "info",
+            "warning",
+            "error",
+        ]).unwrap())
     }
 
-    fn from_value(value: &Value) -> Result<Self> {
+    fn from_value(value: &Value, #[allow(unused)] ctx: impl AsContext) -> Result<Self> {
         if let Value::Enum(enum_val) = value {
             let discriminant = enum_val.discriminant();
             match discriminant {
@@ -35,8 +40,12 @@ impl ComponentType for LogLevel {
         }
     }
 
-    fn into_value(self) -> Result<Value> {
-        let enum_type = EnumType::new(None, ["info", "warning", "error"]).unwrap();
+    fn into_value(self, #[allow(unused)] mut ctx: impl AsContextMut) -> Result<Value> {
+        let enum_type = EnumType::new(None, [
+            "info",
+            "warning",
+            "error",
+        ]).unwrap();
 
         let discriminant = match self {
             LogLevel::Info => 0,
@@ -60,10 +69,15 @@ pub enum Operation {
 
 impl ComponentType for Operation {
     fn ty() -> ValueType {
-        ValueType::Enum(EnumType::new(None, ["add", "subtract", "multiply", "divide"]).unwrap())
+        ValueType::Enum(EnumType::new(None, [
+            "add",
+            "subtract",
+            "multiply",
+            "divide",
+        ]).unwrap())
     }
 
-    fn from_value(value: &Value) -> Result<Self> {
+    fn from_value(value: &Value, #[allow(unused)] ctx: impl AsContext) -> Result<Self> {
         if let Value::Enum(enum_val) = value {
             let discriminant = enum_val.discriminant();
             match discriminant {
@@ -78,8 +92,13 @@ impl ComponentType for Operation {
         }
     }
 
-    fn into_value(self) -> Result<Value> {
-        let enum_type = EnumType::new(None, ["add", "subtract", "multiply", "divide"]).unwrap();
+    fn into_value(self, #[allow(unused)] mut ctx: impl AsContextMut) -> Result<Value> {
+        let enum_type = EnumType::new(None, [
+            "add",
+            "subtract",
+            "multiply",
+            "divide",
+        ]).unwrap();
 
         let discriminant = match self {
             Operation::Add => 0,
@@ -111,12 +130,11 @@ impl ComponentType for CalcResult {
                     ("operation", Operation::ty()),
                     ("success", ValueType::Bool),
                 ],
-            )
-            .unwrap(),
+            ).unwrap(),
         )
     }
 
-    fn from_value(value: &Value) -> Result<Self> {
+    fn from_value(value: &Value, #[allow(unused)] ctx: impl AsContext) -> Result<Self> {
         if let Value::Record(record) = value {
             let value = record
                 .field("value")
@@ -128,17 +146,9 @@ impl ComponentType for CalcResult {
                 .field("success")
                 .ok_or_else(|| anyhow!("Missing 'success' field"))?;
 
-            let value = if let Value::F64(x) = value {
-                x
-            } else {
-                bail!("Expected f64")
-            };
-            let operation = Operation::from_value(&operation)?;
-            let success = if let Value::Bool(x) = success {
-                x
-            } else {
-                bail!("Expected bool")
-            };
+            let value = if let Value::F64(x) = value { x } else { bail!("Expected f64") };
+            let operation = Operation::from_value(&operation, ctx.as_context())?;
+            let success = if let Value::Bool(x) = success { x } else { bail!("Expected bool") };
 
             Ok(CalcResult {
                 value,
@@ -150,7 +160,7 @@ impl ComponentType for CalcResult {
         }
     }
 
-    fn into_value(self) -> Result<Value> {
+    fn into_value(self, #[allow(unused)] mut ctx: impl AsContextMut) -> Result<Value> {
         let record = Record::new(
             RecordType::new(
                 None,
@@ -159,11 +169,10 @@ impl ComponentType for CalcResult {
                     ("operation", Operation::ty()),
                     ("success", ValueType::Bool),
                 ],
-            )
-            .unwrap(),
+            ).unwrap(),
             [
                 ("value", Value::F64(self.value)),
-                ("operation", self.operation.into_value()?),
+                ("operation", self.operation.into_value(ctx.as_context_mut())?),
                 ("success", Value::Bool(self.success)),
             ],
         )?;
@@ -190,12 +199,11 @@ impl ComponentType for CalcError {
                     VariantCase::new("overflow", None),
                     VariantCase::new("invalid-operation", Some(ValueType::String)),
                 ],
-            )
-            .unwrap(),
+            ).unwrap(),
         )
     }
 
-    fn from_value(value: &Value) -> Result<Self> {
+    fn from_value(value: &Value, #[allow(unused)] ctx: impl AsContext) -> Result<Self> {
         if let Value::Variant(variant) = value {
             let discriminant = variant.discriminant();
             let variant_ty = variant.ty();
@@ -208,11 +216,7 @@ impl ComponentType for CalcError {
                 "overflow" => Ok(CalcError::Overflow),
                 "invalid-operation" => {
                     if let Some(payload_value) = payload {
-                        let converted = if let Value::String(s) = payload_value {
-                            s.to_string()
-                        } else {
-                            bail!("Expected string")
-                        };
+                        let converted = if let Value::String(s) = payload_value { s.to_string() } else { bail!("Expected string") };
                         Ok(CalcError::InvalidOperation(converted))
                     } else {
                         bail!("Expected payload for invalid-operation case")
@@ -225,7 +229,7 @@ impl ComponentType for CalcError {
         }
     }
 
-    fn into_value(self) -> Result<Value> {
+    fn into_value(self, #[allow(unused)] mut ctx: impl AsContextMut) -> Result<Value> {
         let variant_type = VariantType::new(
             None,
             [
@@ -233,8 +237,7 @@ impl ComponentType for CalcError {
                 VariantCase::new("overflow", None),
                 VariantCase::new("invalid-operation", Some(ValueType::String)),
             ],
-        )
-        .unwrap();
+        ).unwrap();
 
         let (discriminant, payload) = match self {
             CalcError::DivisionByZero => (0, None),
@@ -248,6 +251,8 @@ impl ComponentType for CalcError {
 }
 
 impl UnaryComponentType for CalcError {}
+
+
 
 // ========== Host Imports ==========
 
@@ -272,14 +277,13 @@ pub mod imports {
                 "log",
                 Func::new(
                     &mut *store,
-                    FuncType::new([LogLevel::ty(), ValueType::String], []),
+                    FuncType::new(
+                        [LogLevel::ty(), ValueType::String, ],
+                        [],
+                    ),
                     |mut ctx, params, _results| {
-                        let level = LogLevel::from_value(&params[0])?;
-                        let message = if let Value::String(s) = &params[1] {
-                            s.to_string()
-                        } else {
-                            bail!("Expected string")
-                        };
+                        let level = LogLevel::from_value(&params[0], ctx.as_context())?;
+                        let message = if let Value::String(s) = &params[1] { s.to_string() } else { bail!("Expected string") };
                         ctx.data_mut().log(level, message);
                         Ok(())
                     },
@@ -289,6 +293,7 @@ pub mod imports {
 
         Ok(())
     }
+
 }
 
 // ========== Guest Exports ==========
@@ -329,4 +334,6 @@ pub mod exports_operations {
             .ok_or_else(|| anyhow!("Function 'get-history' not found"))?
             .typed::<(), Vec<CalcResult>>()
     }
+
 }
+

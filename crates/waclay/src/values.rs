@@ -1161,10 +1161,10 @@ pub trait ComponentType: 'static + Sized {
     fn ty() -> ValueType;
 
     /// Attempts to create an instance of `Self` from a component model value.
-    fn from_value(value: &Value) -> Result<Self>;
+    fn from_value(value: &Value, ctx: impl AsContext) -> Result<Self>;
 
     /// Attempts to convert `Self` into a component model value.
-    fn into_value(self) -> Result<Value>;
+    fn into_value(self, ctx: impl AsContextMut) -> Result<Value>;
 }
 
 /// Implements the `ComponentType` trait for primitive values.
@@ -1176,11 +1176,11 @@ macro_rules! impl_primitive_component_type {
                     ValueType::$enum_name
                 }
 
-                fn from_value(value: &Value) -> Result<Self> {
+                fn from_value(value: &Value, _ctx: impl AsContext) -> Result<Self> {
                     Ok(require_matches!(value, Value::$enum_name(x), *x))
                 }
 
-                fn into_value(self) -> Result<Value> {
+                fn into_value(self, _ctx: impl AsContextMut) -> Result<Value> {
                     Ok(Value::$enum_name(self))
                 }
             }
@@ -1197,11 +1197,11 @@ impl ComponentType for String {
         ValueType::String
     }
 
-    fn from_value(value: &Value) -> Result<Self> {
+    fn from_value(value: &Value, _ctx: impl AsContext) -> Result<Self> {
         Ok(require_matches!(value, Value::String(x), (**x).into()))
     }
 
-    fn into_value(self) -> Result<Value> {
+    fn into_value(self, _ctx: impl AsContextMut) -> Result<Value> {
         Ok(Value::String(self.into()))
     }
 }
@@ -1211,13 +1211,13 @@ impl ComponentType for Box<str> {
         ValueType::String
     }
 
-    fn from_value(value: &Value) -> Result<Self> {
+    fn from_value(value: &Value, _ctx: impl AsContext) -> Result<Self> {
         Ok(require_matches!(value, Value::String(x), x)
             .to_string()
             .into())
     }
 
-    fn into_value(self) -> Result<Value> {
+    fn into_value(self, _ctx: impl AsContextMut) -> Result<Value> {
         Ok(Value::String(self.into()))
     }
 }
@@ -1227,11 +1227,11 @@ impl ComponentType for Arc<str> {
         ValueType::String
     }
 
-    fn from_value(value: &Value) -> Result<Self> {
+    fn from_value(value: &Value, _ctx: impl AsContext) -> Result<Self> {
         Ok(require_matches!(value, Value::String(x), x).clone())
     }
 
-    fn into_value(self) -> Result<Value> {
+    fn into_value(self, _ctx: impl AsContextMut) -> Result<Value> {
         Ok(Value::String(self))
     }
 }
@@ -1241,20 +1241,20 @@ impl<T: ComponentType> ComponentType for Option<T> {
         ValueType::Option(OptionType::new(T::ty()))
     }
 
-    fn from_value(value: &Value) -> Result<Self> {
+    fn from_value(value: &Value, ctx: impl AsContext) -> Result<Self> {
         let inner = require_matches!(value, Value::Option(x), x);
         if let Some(val) = &**inner {
-            Ok(Some(T::from_value(val)?))
+            Ok(Some(T::from_value(val, ctx)?))
         } else {
             Ok(None)
         }
     }
 
-    fn into_value(self) -> Result<Value> {
+    fn into_value(self, ctx: impl AsContextMut) -> Result<Value> {
         if let Some(val) = self {
             Ok(Value::Option(OptionValue::new(
                 OptionType::new(T::ty()),
-                Some(T::into_value(val)?),
+                Some(T::into_value(val, ctx)?),
             )?))
         } else {
             Ok(Value::Option(OptionValue::new(
@@ -1270,12 +1270,12 @@ impl<T: ComponentType> ComponentType for Box<T> {
         T::ty()
     }
 
-    fn from_value(value: &Value) -> Result<Self> {
-        Ok(Box::new(T::from_value(value)?))
+    fn from_value(value: &Value, ctx: impl AsContext) -> Result<Self> {
+        Ok(Box::new(T::from_value(value, ctx)?))
     }
 
-    fn into_value(self) -> Result<Value> {
-        Ok(T::into_value(*self)?)
+    fn into_value(self, ctx: impl AsContextMut) -> Result<Value> {
+        Ok(T::into_value(*self, ctx)?)
     }
 }
 
@@ -1284,7 +1284,7 @@ impl ComponentType for Result<(), ()> {
         ValueType::Result(ResultType::new(None, None))
     }
 
-    fn from_value(value: &Value) -> Result<Self> {
+    fn from_value(value: &Value, _ctx: impl AsContext) -> Result<Self> {
         match &**require_matches!(value, Value::Result(x), x) {
             std::result::Result::Ok(None) => Ok(std::result::Result::Ok(())),
             std::result::Result::Err(None) => Ok(std::result::Result::Err(())),
@@ -1292,7 +1292,7 @@ impl ComponentType for Result<(), ()> {
         }
     }
 
-    fn into_value(self) -> Result<Value> {
+    fn into_value(self, _ctx: impl AsContextMut) -> Result<Value> {
         match self {
             std::result::Result::Ok(()) => Ok(Value::Result(ResultValue::new(
                 ResultType::new(None, None),
@@ -1311,19 +1311,19 @@ impl<T: ComponentType> ComponentType for Result<T, ()> {
         ValueType::Result(ResultType::new(Some(T::ty()), None))
     }
 
-    fn from_value(value: &Value) -> Result<Self> {
+    fn from_value(value: &Value, ctx: impl AsContext) -> Result<Self> {
         match &**require_matches!(value, Value::Result(x), x) {
-            std::result::Result::Ok(Some(x)) => Ok(std::result::Result::Ok(T::from_value(x)?)),
+            std::result::Result::Ok(Some(x)) => Ok(std::result::Result::Ok(T::from_value(x, ctx)?)),
             std::result::Result::Err(None) => Ok(std::result::Result::Err(())),
             _ => bail!("Incorrect result type."),
         }
     }
 
-    fn into_value(self) -> Result<Value> {
+    fn into_value(self, ctx: impl AsContextMut) -> Result<Value> {
         match self {
             std::result::Result::Ok(x) => Ok(Value::Result(ResultValue::new(
                 ResultType::new(Some(T::ty()), None),
-                std::result::Result::Ok(Some(T::into_value(x)?)),
+                std::result::Result::Ok(Some(T::into_value(x, ctx)?)),
             )?)),
             std::result::Result::Err(()) => Ok(Value::Result(ResultValue::new(
                 ResultType::new(Some(T::ty()), None),
@@ -1338,15 +1338,17 @@ impl<T: ComponentType> ComponentType for Result<(), T> {
         ValueType::Result(ResultType::new(None, Some(T::ty())))
     }
 
-    fn from_value(value: &Value) -> Result<Self> {
+    fn from_value(value: &Value, ctx: impl AsContext) -> Result<Self> {
         match &**require_matches!(value, Value::Result(x), x) {
             std::result::Result::Ok(None) => Ok(std::result::Result::Ok(())),
-            std::result::Result::Err(Some(v)) => Ok(std::result::Result::Err(T::from_value(v)?)),
+            std::result::Result::Err(Some(v)) => {
+                Ok(std::result::Result::Err(T::from_value(v, ctx)?))
+            }
             _ => bail!("Incorrect result type."),
         }
     }
 
-    fn into_value(self) -> Result<Value> {
+    fn into_value(self, ctx: impl AsContextMut) -> Result<Value> {
         match self {
             std::result::Result::Ok(()) => Ok(Value::Result(ResultValue::new(
                 ResultType::new(None, Some(T::ty())),
@@ -1354,7 +1356,7 @@ impl<T: ComponentType> ComponentType for Result<(), T> {
             )?)),
             std::result::Result::Err(v) => Ok(Value::Result(ResultValue::new(
                 ResultType::new(None, Some(T::ty())),
-                std::result::Result::Err(Some(T::into_value(v)?)),
+                std::result::Result::Err(Some(T::into_value(v, ctx)?)),
             )?)),
         }
     }
@@ -1365,23 +1367,25 @@ impl<U: ComponentType, V: ComponentType> ComponentType for Result<U, V> {
         ValueType::Result(ResultType::new(Some(U::ty()), Some(V::ty())))
     }
 
-    fn from_value(value: &Value) -> Result<Self> {
+    fn from_value(value: &Value, ctx: impl AsContext) -> Result<Self> {
         match &**require_matches!(value, Value::Result(x), x) {
-            std::result::Result::Ok(Some(u)) => Ok(std::result::Result::Ok(U::from_value(u)?)),
-            std::result::Result::Err(Some(v)) => Ok(std::result::Result::Err(V::from_value(v)?)),
+            std::result::Result::Ok(Some(u)) => Ok(std::result::Result::Ok(U::from_value(u, ctx)?)),
+            std::result::Result::Err(Some(v)) => {
+                Ok(std::result::Result::Err(V::from_value(v, ctx)?))
+            }
             _ => bail!("Incorrect result type."),
         }
     }
 
-    fn into_value(self) -> Result<Value> {
+    fn into_value(self, ctx: impl AsContextMut) -> Result<Value> {
         match self {
             std::result::Result::Ok(u) => Ok(Value::Result(ResultValue::new(
                 ResultType::new(Some(U::ty()), Some(V::ty())),
-                std::result::Result::Ok(Some(U::into_value(u)?)),
+                std::result::Result::Ok(Some(U::into_value(u, ctx)?)),
             )?)),
             std::result::Result::Err(v) => Ok(Value::Result(ResultValue::new(
                 ResultType::new(Some(U::ty()), Some(V::ty())),
-                std::result::Result::Err(Some(V::into_value(v)?)),
+                std::result::Result::Err(Some(V::into_value(v, ctx)?)),
             )?)),
         }
     }
@@ -1392,7 +1396,7 @@ impl<T: ComponentType> ComponentType for Vec<T> {
         ValueType::List(ListType::new(T::ty()))
     }
 
-    fn from_value(value: &Value) -> Result<Self> {
+    fn from_value(value: &Value, ctx: impl AsContext) -> Result<Self> {
         let list = require_matches!(value, Value::List(x), x);
 
         let id = TypeId::of::<T>();
@@ -1459,12 +1463,12 @@ impl<T: ComponentType> ComponentType for Vec<T> {
         } else {
             require_matches!(&list.values, ListSpecialization::Other(x), x)
                 .iter()
-                .map(|x| T::from_value(x))
+                .map(|x| T::from_value(x, ctx.as_context()))
                 .collect::<Result<_>>()?
         })
     }
 
-    fn into_value(self) -> Result<Value> {
+    fn into_value(self, mut ctx: impl AsContextMut) -> Result<Value> {
         let holder = Box::new(self) as Box<dyn Any>;
         let id = TypeId::of::<T>();
         Ok(Value::List(if id == TypeId::of::<bool>() {
@@ -1583,7 +1587,7 @@ impl<T: ComponentType> ComponentType for Vec<T> {
                         .downcast::<Vec<T>>()
                         .expect("Could not downcast vector.")
                         .into_iter()
-                        .map(|x| x.into_value())
+                        .map(|x| x.into_value(ctx.as_context_mut()))
                         .collect::<Result<_>>()?,
                 ),
             }
@@ -1599,18 +1603,18 @@ macro_rules! tuple_impl {
                 ValueType::Tuple(TupleType::new(None, [$(<$ty as ComponentType>::ty(),)*]))
             }
 
-            fn from_value(value: &Value) -> Result<Self> {
+            fn from_value(value: &Value, ctx: impl AsContext) -> Result<Self> {
                 Ok(require_matches!(
                     value,
                     Value::Tuple(x),
-                    ($(<$ty as ComponentType>::from_value(&x.fields[$idx])?,)*)
+                    ($(<$ty as ComponentType>::from_value(&x.fields[$idx], ctx.as_context())?,)*)
                 ))
             }
 
-            fn into_value(self) -> Result<Value> {
+            fn into_value(self, mut ctx: impl AsContextMut) -> Result<Value> {
                 Ok(Value::Tuple(Tuple::new(
                     TupleType::new(None, [$(<$ty as ComponentType>::ty(),)*]),
-                    [$(<$ty as ComponentType>::into_value(self.$idx)?,)*]
+                    [$(<$ty as ComponentType>::into_value(self.$idx, ctx.as_context_mut())?,)*]
                 )?))
             }
         }

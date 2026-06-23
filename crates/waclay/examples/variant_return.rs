@@ -34,7 +34,7 @@ impl ComponentType for Status {
         )
     }
 
-    fn from_value(value: &Value) -> Result<Self> {
+    fn from_value(value: &Value, _ctx: impl AsContext) -> Result<Self> {
         if let Value::Variant(variant) = value {
             let discriminant = variant.discriminant();
             let variant_ty = variant.ty();
@@ -81,7 +81,7 @@ impl ComponentType for Status {
         }
     }
 
-    fn into_value(self) -> Result<Value> {
+    fn into_value(self, _ctx: impl AsContextMut) -> Result<Value> {
         let variant_type = VariantType::new(
             None,
             [

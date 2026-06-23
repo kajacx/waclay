@@ -4,13 +4,12 @@
 #![allow(dead_code, unused_imports, ambiguous_glob_reexports)]
 
 use anyhow::*;
-use waclay::*;
-use wasm_runtime_layer::{backend};
 use bitflags;
+use waclay::*;
+use wasm_runtime_layer::backend;
 
 // Note: If using flags types, add to your Cargo.toml:
 // bitflags = "2.0"
-
 
 // ========== Type Definitions ==========
 
@@ -26,15 +25,10 @@ bitflags::bitflags! {
 
 impl ComponentType for Permissions {
     fn ty() -> ValueType {
-        ValueType::Flags(FlagsType::new(None, [
-            "read",
-            "write",
-            "execute",
-            "delete",
-        ]).unwrap())
+        ValueType::Flags(FlagsType::new(None, ["read", "write", "execute", "delete"]).unwrap())
     }
 
-    fn from_value(value: &Value) -> Result<Self> {
+    fn from_value(value: &Value, _ctx: impl AsContext) -> Result<Self> {
         if let Value::Flags(flags_val) = value {
             let mut result = Permissions::empty();
             let ty = flags_val.ty();
@@ -50,13 +44,8 @@ impl ComponentType for Permissions {
         }
     }
 
-    fn into_value(self) -> Result<Value> {
-        let flags_type = FlagsType::new(None, [
-            "read",
-            "write",
-            "execute",
-            "delete",
-        ]).unwrap();
+    fn into_value(self, _ctx: impl AsContextMut) -> Result<Value> {
+        let flags_type = FlagsType::new(None, ["read", "write", "execute", "delete"]).unwrap();
 
         let mut flags_val = Flags::new(flags_type);
         for i in 0..4 {
@@ -80,15 +69,16 @@ pub enum OperationType {
 
 impl ComponentType for OperationType {
     fn ty() -> ValueType {
-        ValueType::Enum(EnumType::new(None, [
-            "read-file",
-            "write-file",
-            "delete-file",
-            "execute-file",
-        ]).unwrap())
+        ValueType::Enum(
+            EnumType::new(
+                None,
+                ["read-file", "write-file", "delete-file", "execute-file"],
+            )
+            .unwrap(),
+        )
     }
 
-    fn from_value(value: &Value) -> Result<Self> {
+    fn from_value(value: &Value, _ctx: impl AsContext) -> Result<Self> {
         if let Value::Enum(enum_val) = value {
             let discriminant = enum_val.discriminant();
             match discriminant {
@@ -103,13 +93,12 @@ impl ComponentType for OperationType {
         }
     }
 
-    fn into_value(self) -> Result<Value> {
-        let enum_type = EnumType::new(None, [
-            "read-file",
-            "write-file",
-            "delete-file",
-            "execute-file",
-        ]).unwrap();
+    fn into_value(self, _ctx: impl AsContextMut) -> Result<Value> {
+        let enum_type = EnumType::new(
+            None,
+            ["read-file", "write-file", "delete-file", "execute-file"],
+        )
+        .unwrap();
 
         let discriminant = match self {
             OperationType::ReadFile => 0,
@@ -123,8 +112,6 @@ impl ComponentType for OperationType {
 }
 
 impl UnaryComponentType for OperationType {}
-
-
 
 #[derive(Debug, Clone)]
 pub struct FileInfo {
@@ -145,11 +132,12 @@ impl ComponentType for FileInfo {
                     ("permissions", Permissions::ty()),
                     ("exists", ValueType::Bool),
                 ],
-            ).unwrap(),
+            )
+            .unwrap(),
         )
     }
 
-    fn from_value(value: &Value) -> Result<Self> {
+    fn from_value(value: &Value, _ctx: impl AsContext) -> Result<Self> {
         if let Value::Record(record) = value {
             let path = record
                 .field("path")
@@ -164,10 +152,22 @@ impl ComponentType for FileInfo {
                 .field("exists")
                 .ok_or_else(|| anyhow!("Missing 'exists' field"))?;
 
-            let path = if let Value::String(s) = path { s.to_string() } else { bail!("Expected string") };
-            let size = if let Value::U64(x) = size { x } else { bail!("Expected u64") };
+            let path = if let Value::String(s) = path {
+                s.to_string()
+            } else {
+                bail!("Expected string")
+            };
+            let size = if let Value::U64(x) = size {
+                x
+            } else {
+                bail!("Expected u64")
+            };
             let permissions = Permissions::from_value(&permissions)?;
-            let exists = if let Value::Bool(x) = exists { x } else { bail!("Expected bool") };
+            let exists = if let Value::Bool(x) = exists {
+                x
+            } else {
+                bail!("Expected bool")
+            };
 
             Ok(FileInfo {
                 path,
@@ -180,7 +180,7 @@ impl ComponentType for FileInfo {
         }
     }
 
-    fn into_value(self) -> Result<Value> {
+    fn into_value(self, _ctx: impl AsContextMut) -> Result<Value> {
         let record = Record::new(
             RecordType::new(
                 None,
@@ -190,7 +190,8 @@ impl ComponentType for FileInfo {
                     ("permissions", Permissions::ty()),
                     ("exists", ValueType::Bool),
                 ],
-            ).unwrap(),
+            )
+            .unwrap(),
             [
                 ("path", Value::String(self.path.into())),
                 ("size", Value::U64(self.size)),
@@ -223,11 +224,12 @@ impl ComponentType for FileResult {
                     VariantCase::new("not-found", None),
                     VariantCase::new("io-error", Some(ValueType::String)),
                 ],
-            ).unwrap(),
+            )
+            .unwrap(),
         )
     }
 
-    fn from_value(value: &Value) -> Result<Self> {
+    fn from_value(value: &Value, _ctx: impl AsContext) -> Result<Self> {
         if let Value::Variant(variant) = value {
             let discriminant = variant.discriminant();
             let variant_ty = variant.ty();
@@ -246,7 +248,11 @@ impl ComponentType for FileResult {
                 }
                 "permission-denied" => {
                     if let Some(payload_value) = payload {
-                        let converted = if let Value::String(s) = payload_value { s.to_string() } else { bail!("Expected string") };
+                        let converted = if let Value::String(s) = payload_value {
+                            s.to_string()
+                        } else {
+                            bail!("Expected string")
+                        };
                         Ok(FileResult::PermissionDenied(converted))
                     } else {
                         bail!("Expected payload for permission-denied case")
@@ -255,7 +261,11 @@ impl ComponentType for FileResult {
                 "not-found" => Ok(FileResult::NotFound),
                 "io-error" => {
                     if let Some(payload_value) = payload {
-                        let converted = if let Value::String(s) = payload_value { s.to_string() } else { bail!("Expected string") };
+                        let converted = if let Value::String(s) = payload_value {
+                            s.to_string()
+                        } else {
+                            bail!("Expected string")
+                        };
                         Ok(FileResult::IoError(converted))
                     } else {
                         bail!("Expected payload for io-error case")
@@ -268,7 +278,7 @@ impl ComponentType for FileResult {
         }
     }
 
-    fn into_value(self) -> Result<Value> {
+    fn into_value(self, _ctx: impl AsContextMut) -> Result<Value> {
         let variant_type = VariantType::new(
             None,
             [
@@ -277,7 +287,8 @@ impl ComponentType for FileResult {
                 VariantCase::new("not-found", None),
                 VariantCase::new("io-error", Some(ValueType::String)),
             ],
-        ).unwrap();
+        )
+        .unwrap();
 
         let (discriminant, payload) = match self {
             FileResult::Success(val) => (0, Some(val.into_value()?)),
@@ -292,8 +303,6 @@ impl ComponentType for FileResult {
 }
 
 impl UnaryComponentType for FileResult {}
-
-
 
 // ========== Host Imports ==========
 
@@ -319,12 +328,13 @@ pub mod imports {
                 "check-permission",
                 Func::new(
                     &mut *store,
-                    FuncType::new(
-                        [ValueType::String, Permissions::ty(), ],
-                        [ValueType::Bool],
-                    ),
+                    FuncType::new([ValueType::String, Permissions::ty()], [ValueType::Bool]),
                     |mut ctx, params, results| {
-                        let path = if let Value::String(s) = &params[0] { s.to_string() } else { bail!("Expected string") };
+                        let path = if let Value::String(s) = &params[0] {
+                            s.to_string()
+                        } else {
+                            bail!("Expected string")
+                        };
                         let perms = Permissions::from_value(&params[1])?;
                         let result = ctx.data_mut().check_permission(path, perms);
                         results[0] = Value::Bool(result);
@@ -340,13 +350,21 @@ pub mod imports {
                 Func::new(
                     &mut *store,
                     FuncType::new(
-                        [ValueType::String, OperationType::ty(), ValueType::Bool, ],
+                        [ValueType::String, OperationType::ty(), ValueType::Bool],
                         [],
                     ),
                     |mut ctx, params, _results| {
-                        let path = if let Value::String(s) = &params[0] { s.to_string() } else { bail!("Expected string") };
+                        let path = if let Value::String(s) = &params[0] {
+                            s.to_string()
+                        } else {
+                            bail!("Expected string")
+                        };
                         let op = OperationType::from_value(&params[1])?;
-                        let allowed = if let Value::Bool(x) = &params[2] { *x } else { bail!("Expected bool") };
+                        let allowed = if let Value::Bool(x) = &params[2] {
+                            *x
+                        } else {
+                            bail!("Expected bool")
+                        };
                         ctx.data_mut().log_access(path, op, allowed);
                         Ok(())
                     },
@@ -356,7 +374,6 @@ pub mod imports {
 
         Ok(())
     }
-
 }
 
 // ========== Guest Exports ==========
@@ -410,6 +427,4 @@ pub mod exports_fs_operations {
             .ok_or_else(|| anyhow!("Function 'list-files' not found"))?
             .typed::<Permissions, Vec<FileInfo>>()
     }
-
 }
-

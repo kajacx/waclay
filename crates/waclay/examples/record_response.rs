@@ -17,7 +17,7 @@ impl ComponentType for Response {
         )
     }
 
-    fn from_value(value: &Value) -> Result<Self> {
+    fn from_value(value: &Value, _ctx: impl AsContext) -> Result<Self> {
         if let Value::Record(record) = value {
             let id = record
                 .field("id")
@@ -43,7 +43,7 @@ impl ComponentType for Response {
         }
     }
 
-    fn into_value(self) -> Result<Value> {
+    fn into_value(self, _ctx: impl AsContextMut) -> Result<Value> {
         let record = Record::new(
             RecordType::new(None, [("id", ValueType::U32), ("reply", ValueType::String)]).unwrap(),
             [
