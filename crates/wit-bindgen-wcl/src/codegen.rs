@@ -571,9 +571,18 @@ fn generate_flags_type(rust_name: &str, flags: &Flags, output: &mut String) -> R
 fn generate_resource_type(rust_name: &str, output: &mut String) -> Result<()> {
     writeln!(output, "/// Resource type: {}", rust_name)?;
     writeln!(output, "/// ")?;
-    writeln!(output, "/// This is a host-managed resource. You should define this type")?;
-    writeln!(output, "/// with your actual resource data, then use the manual registration")?;
-    writeln!(output, "/// pattern shown below instead of the generated trait.")?;
+    writeln!(
+        output,
+        "/// This is a host-managed resource. You should define this type"
+    )?;
+    writeln!(
+        output,
+        "/// with your actual resource data, then use the manual registration"
+    )?;
+    writeln!(
+        output,
+        "/// pattern shown below instead of the generated trait."
+    )?;
     writeln!(output, "/// ")?;
     writeln!(output, "/// Example:")?;
     writeln!(output, "/// ```rust,ignore")?;
@@ -583,16 +592,36 @@ fn generate_resource_type(rust_name: &str, output: &mut String) -> Result<()> {
     writeln!(output, "///     value: i32,")?;
     writeln!(output, "/// }}")?;
     writeln!(output, "/// ")?;
-    writeln!(output, "/// // Manual registration (replaces generated trait):")?;
-    writeln!(output, "/// let resource_ty = ResourceType::new::<{}>(None);", rust_name)?;
+    writeln!(
+        output,
+        "/// // Manual registration (replaces generated trait):"
+    )?;
+    writeln!(
+        output,
+        "/// let resource_ty = ResourceType::new::<{}>(None);",
+        rust_name
+    )?;
     writeln!(output, "/// ")?;
     writeln!(output, "/// // Constructor:")?;
-    writeln!(output, "/// interface.define_func(\"[constructor]{}\",", rust_name.to_snake_case())?;
+    writeln!(
+        output,
+        "/// interface.define_func(\"[constructor]{}\",",
+        rust_name.to_snake_case()
+    )?;
     writeln!(output, "///     Func::new(&mut store,")?;
-    writeln!(output, "///         FuncType::new([/* params */], [ValueType::Own(resource_ty.clone())]),")?;
+    writeln!(
+        output,
+        "///         FuncType::new([/* params */], [ValueType::Own(resource_ty.clone())]),"
+    )?;
     writeln!(output, "///         move |ctx, args, results| {{")?;
-    writeln!(output, "///             // Extract params and create resource")?;
-    writeln!(output, "///             results[0] = Value::Own(ResourceOwn::new(")?;
+    writeln!(
+        output,
+        "///             // Extract params and create resource"
+    )?;
+    writeln!(
+        output,
+        "///             results[0] = Value::Own(ResourceOwn::new("
+    )?;
     writeln!(output, "///                 ctx,")?;
     writeln!(output, "///                 {}(/* data */),", rust_name)?;
     writeln!(output, "///                 resource_ty.clone(),")?;
@@ -603,14 +632,28 @@ fn generate_resource_type(rust_name: &str, output: &mut String) -> Result<()> {
     writeln!(output, "/// )?;")?;
     writeln!(output, "/// ")?;
     writeln!(output, "/// // Methods:")?;
-    writeln!(output, "/// interface.define_func(\"[method]{}.method-name\",", rust_name.to_snake_case())?;
+    writeln!(
+        output,
+        "/// interface.define_func(\"[method]{}.method-name\",",
+        rust_name.to_snake_case()
+    )?;
     writeln!(output, "///     Func::new(&mut store,")?;
-    writeln!(output, "///         FuncType::new([ValueType::Borrow(resource_ty.clone())], []),")?;
+    writeln!(
+        output,
+        "///         FuncType::new([ValueType::Borrow(resource_ty.clone())], []),"
+    )?;
     writeln!(output, "///         |ctx, args, _| {{")?;
-    writeln!(output, "///             let Value::Borrow(res) = &args[0] else {{")?;
+    writeln!(
+        output,
+        "///             let Value::Borrow(res) = &args[0] else {{"
+    )?;
     writeln!(output, "///                 bail!(\"Expected Borrow\")")?;
     writeln!(output, "///             }};")?;
-    writeln!(output, "///             let data = res.rep::<{}, _, _>(&ctx.as_context())?;", rust_name)?;
+    writeln!(
+        output,
+        "///             let data = res.rep::<{}, _, _>(&ctx.as_context())?;",
+        rust_name
+    )?;
     writeln!(output, "///             // Use data")?;
     writeln!(output, "///             Ok(())")?;
     writeln!(output, "///         }}")?;
@@ -618,26 +661,35 @@ fn generate_resource_type(rust_name: &str, output: &mut String) -> Result<()> {
     writeln!(output, "/// )?;")?;
     writeln!(output, "/// ```")?;
     writeln!(output, "/// ")?;
-    writeln!(output, "/// See the waclay examples/resource.rs for a complete working example.")?;
+    writeln!(
+        output,
+        "/// See the waclay examples/resource.rs for a complete working example."
+    )?;
     writeln!(output, "#[derive(Debug)]")?;
     writeln!(output, "pub struct {} {{", rust_name)?;
     writeln!(output, "    // TODO: Add your resource fields")?;
-    writeln!(output, "    _placeholder: (),", )?;
+    writeln!(output, "    _placeholder: (),",)?;
     writeln!(output, "}}")?;
     writeln!(output)?;
-    
+
     // Add helper method for getting ResourceType
     writeln!(output, "impl {} {{", rust_name)?;
     writeln!(output, "    /// Get the ResourceType for this resource.")?;
     writeln!(output, "    /// ")?;
-    writeln!(output, "    /// This helper method creates a ResourceType for use in manual")?;
-    writeln!(output, "    /// resource registration. See the documentation above for usage.")?;
+    writeln!(
+        output,
+        "    /// This helper method creates a ResourceType for use in manual"
+    )?;
+    writeln!(
+        output,
+        "    /// resource registration. See the documentation above for usage."
+    )?;
     writeln!(output, "    pub fn resource_type() -> ResourceType {{")?;
     writeln!(output, "        ResourceType::new::<Self>(None)")?;
     writeln!(output, "    }}")?;
     writeln!(output, "}}")?;
     writeln!(output)?;
-    
+
     Ok(())
 }
 
@@ -729,17 +781,24 @@ fn parse_resource_function_name(func_name: &str) -> (bool, String) {
         let resource_name = &func_name["[constructor]".len()..];
         return (true, format!("new_{}", resource_name.to_snake_case()));
     }
-    
+
     // Check if this is a resource method
     if func_name.starts_with("[method]") {
         let rest = &func_name["[method]".len()..];
         if let Some(dot_pos) = rest.find('.') {
             let resource_name = &rest[..dot_pos];
             let method_name = &rest[dot_pos + 1..];
-            return (true, format!("{}_{}", resource_name.to_snake_case(), method_name.to_snake_case()));
+            return (
+                true,
+                format!(
+                    "{}_{}",
+                    resource_name.to_snake_case(),
+                    method_name.to_snake_case()
+                ),
+            );
         }
     }
-    
+
     // Regular function
     (false, func_name.to_snake_case())
 }
@@ -805,22 +864,48 @@ fn generate_import_registration(
 
     // Check if interface has functions
     let has_functions = !interface.functions.is_empty();
-    let store_prefix = if has_functions { "" } else { "_" };
-    let interface_prefix = if has_functions { "" } else { "_" };
-    
+    // let has_resources = !interface
+    //     .types
+    //     .iter()
+    //     .any(|(_name, ty)| matches!(resolve.types.get(*ty).unwrap().kind, TypeDefKind::Resource));
+    let has_resources = true; // TODO: resource detection
+    let store_prefix = if has_functions || has_resources {
+        ""
+    } else {
+        "_"
+    };
+    let interface_prefix = if has_functions || has_resources {
+        ""
+    } else {
+        "_"
+    };
+
     // Check if interface has resources
-    let has_resources = interface.types.values().any(|type_id| {
-        matches!(resolve.types[*type_id].kind, TypeDefKind::Resource)
-    });
-    
+    let has_resources = interface
+        .types
+        .values()
+        .any(|type_id| matches!(resolve.types[*type_id].kind, TypeDefKind::Resource));
+
     if has_resources {
         writeln!(output)?;
-        writeln!(output, "    // NOTE: This interface contains resources which require manual")?;
-        writeln!(output, "    // implementation. See the generated resource type documentation")?;
+        writeln!(
+            output,
+            "    // NOTE: This interface contains resources which require manual"
+        )?;
+        writeln!(
+            output,
+            "    // implementation. See the generated resource type documentation"
+        )?;
         writeln!(output, "    // for the correct registration pattern.")?;
         writeln!(output, "    // ")?;
-        writeln!(output, "    // The generated trait below will not compile correctly for resource")?;
-        writeln!(output, "    // methods. Use the manual registration pattern shown in the")?;
+        writeln!(
+            output,
+            "    // The generated trait below will not compile correctly for resource"
+        )?;
+        writeln!(
+            output,
+            "    // methods. Use the manual registration pattern shown in the"
+        )?;
         writeln!(output, "    // resource type documentation instead.")?;
     }
 
@@ -857,14 +942,22 @@ fn generate_import_registration(
                 .as_ref()
                 .ok_or_else(|| anyhow::anyhow!("Resource without name"))?;
             let resource_rust_name = resource_name.to_upper_camel_case();
-            
+
             writeln!(output, "        // Register resource: {}", resource_name)?;
             writeln!(output, "        host_interface")?;
             writeln!(output, "            .define_resource(")?;
             writeln!(output, "                \"{}\",", resource_name)?;
-            writeln!(output, "                {}::resource_type(),", resource_rust_name)?;
+            writeln!(
+                output,
+                "                {}::resource_type(),",
+                resource_rust_name
+            )?;
             writeln!(output, "            )")?;
-            writeln!(output, "            .context(\"Failed to define resource {}\")?;", resource_name)?;
+            writeln!(
+                output,
+                "            .context(\"Failed to define resource {}\")?;",
+                resource_name
+            )?;
             writeln!(output)?;
         }
     }
@@ -1157,7 +1250,7 @@ fn type_to_rust_type(resolve: &Resolve, ty: &Type) -> String {
                         .as_ref()
                         .map(|n| n.to_upper_camel_case())
                         .unwrap_or_else(|| format!("Resource{:?}", resource_id));
-                    
+
                     // For now, we just return the resource name
                     // In a more complete implementation, we might differentiate Own vs Borrow
                     resource_name
@@ -1250,7 +1343,10 @@ fn type_to_value_type(resolve: &Resolve, ty: &Type) -> String {
                                 .as_ref()
                                 .map(|n| n.to_upper_camel_case())
                                 .unwrap_or_else(|| format!("Resource{:?}", id));
-                            return format!("ValueType::Borrow({}::resource_type())", resource_name);
+                            return format!(
+                                "ValueType::Borrow({}::resource_type())",
+                                resource_name
+                            );
                         }
                     }
                 }
@@ -1395,15 +1491,19 @@ pub fn generate_toplevel_import_trait(
     output: &mut String,
 ) -> Result<()> {
     let trait_name = format!("{}Host", func_name.to_upper_camel_case());
-    
-    writeln!(output, "/// Host trait for top-level function: {}", func_name)?;
+
+    writeln!(
+        output,
+        "/// Host trait for top-level function: {}",
+        func_name
+    )?;
     writeln!(output, "pub trait {} {{", trait_name)?;
-    
+
     generate_trait_method(resolve, func_name, func, output)?;
-    
+
     writeln!(output, "}}")?;
     writeln!(output)?;
-    
+
     Ok(())
 }
 
@@ -1416,7 +1516,7 @@ pub fn generate_toplevel_import_registration(
 ) -> Result<()> {
     let trait_name = format!("{}Host", func_name.to_upper_camel_case());
     let registration_fn_name = format!("register_{}_host", func_name.to_snake_case());
-    
+
     writeln!(
         output,
         "    pub fn {}<T: {} + 'static, E: backend::WasmEngine>(",
@@ -1431,7 +1531,7 @@ pub fn generate_toplevel_import_registration(
     writeln!(output, "                \"{}\",", func_name)?;
     writeln!(output, "                Func::new(")?;
     writeln!(output, "                    &mut *store,")?;
-    
+
     // FuncType
     writeln!(output, "                    FuncType::new(")?;
     write!(output, "                        [")?;
@@ -1439,7 +1539,7 @@ pub fn generate_toplevel_import_registration(
         write!(output, "{}, ", type_to_value_type(resolve, ty))?;
     }
     writeln!(output, "],")?;
-    
+
     write!(output, "                        [")?;
     match &func.results {
         Results::Named(results) => {
@@ -1453,7 +1553,7 @@ pub fn generate_toplevel_import_registration(
     }
     writeln!(output, "],")?;
     writeln!(output, "                    ),")?;
-    
+
     // Closure - prefix 'results' with underscore if unused
     let results_param = if matches!(&func.results, Results::Named(r) if !r.is_empty())
         || matches!(&func.results, Results::Anon(_))
@@ -1467,7 +1567,7 @@ pub fn generate_toplevel_import_registration(
         "                    |mut ctx, params, {}| {{",
         results_param
     )?;
-    
+
     // Extract parameters
     for (i, (param_name, param_ty)) in func.params.iter().enumerate() {
         let param_snake = param_name.to_snake_case();
@@ -1478,7 +1578,7 @@ pub fn generate_toplevel_import_registration(
             value_to_rust(resolve, &format!("params[{}]", i), param_ty)
         )?;
     }
-    
+
     // Call trait method
     let method_name = func_name.to_snake_case();
     let param_names: Vec<_> = func
@@ -1486,7 +1586,7 @@ pub fn generate_toplevel_import_registration(
         .iter()
         .map(|(name, _)| name.to_snake_case())
         .collect();
-    
+
     if matches!(&func.results, Results::Named(r) if !r.is_empty())
         || matches!(&func.results, Results::Anon(_))
     {
@@ -1514,7 +1614,7 @@ pub fn generate_toplevel_import_registration(
             param_names.join(", ")
         )?;
     }
-    
+
     writeln!(output, "                        Ok(())")?;
     writeln!(output, "                    }},")?;
     writeln!(output, "                ),")?;
@@ -1528,7 +1628,7 @@ pub fn generate_toplevel_import_registration(
     writeln!(output, "        Ok(())")?;
     writeln!(output, "    }}")?;
     writeln!(output)?;
-    
+
     Ok(())
 }
 
@@ -1540,7 +1640,7 @@ pub fn generate_toplevel_export_helper(
     output: &mut String,
 ) -> Result<()> {
     let fn_name = format!("get_{}", func_name.to_snake_case());
-    
+
     // Build param tuple
     let param_tuple = if func.params.is_empty() {
         "()".to_string()
@@ -1554,7 +1654,7 @@ pub fn generate_toplevel_export_helper(
             .collect();
         format!("({})", types.join(", "))
     };
-    
+
     // Build result tuple - handle multiple returns properly
     let result_tuple = match &func.results {
         Results::Named(results) if results.is_empty() => "()".to_string(),
@@ -1570,7 +1670,7 @@ pub fn generate_toplevel_export_helper(
         }
         Results::Anon(ty) => type_to_rust_type(resolve, ty),
     };
-    
+
     writeln!(output, "pub mod exports_{} {{", func_name.to_snake_case())?;
     writeln!(output, "    use super::*;")?;
     writeln!(output)?;
@@ -1600,6 +1700,6 @@ pub fn generate_toplevel_export_helper(
     writeln!(output, "    }}")?;
     writeln!(output, "}}")?;
     writeln!(output)?;
-    
+
     Ok(())
 }
