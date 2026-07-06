@@ -19,8 +19,8 @@ use anyhow::Result;
 use heck::{ToSnakeCase, ToUpperCamelCase};
 use std::fmt::Write as FmtWrite;
 use wit_parser::{
-    Enum, Flags, Function, Handle, Interface, InterfaceId, Record, Resolve, Results, Type, TypeDef,
-    TypeDefKind, Variant,
+    Enum, Field, Flags, Function, Handle, Interface, InterfaceId, Record, Resolve, Results, Type,
+    TypeDef, TypeDefKind, Variant,
 };
 
 pub fn generate_type_definition(
@@ -77,7 +77,7 @@ fn generate_record_type(
     writeln!(output, "#[derive(Debug, Clone)]")?;
     writeln!(output, "pub struct {} {{", rust_name)?;
     for field in &record.fields {
-        let field_name = field.name.to_snake_case();
+        let field_name = field_name(field);
         let field_type = type_to_rust_type(resolve, &field.ty);
         writeln!(output, "    pub {}: {},", field_name, field_type)?;
     }
@@ -88,6 +88,22 @@ fn generate_record_type(
     generate_record_component_type(resolve, rust_name, record, output)?;
 
     Ok(())
+}
+
+static KEYWORDS: [&'static str; 38] = [
+    "as", "async", "await", "break", "const", "continue", "crate", "dyn", "else", "enum", "extern",
+    "false", "fn", "for", "if", "impl", "in", "let", "loop", "match", "mod", "move", "mut", "pub",
+    "ref", "return", "self", "Self", "static", "struct", "super", "trait", "true", "type",
+    "unsafe", "use", "where", "while",
+];
+
+fn field_name(field: &Field) -> String {
+    let name = field.name.to_snake_case();
+    if KEYWORDS.contains(&name.as_str()) {
+        format!("r#{name}")
+    } else {
+        name
+    }
 }
 
 fn generate_record_component_type(
@@ -128,7 +144,7 @@ fn generate_record_component_type(
 
     // Extract fields
     for field in &record.fields {
-        let field_name = field.name.to_snake_case();
+        let field_name = field_name(field);
         let wit_name = &field.name;
         writeln!(output, "            let {} = record", field_name)?;
         writeln!(output, "                .field(\"{}\")", wit_name)?;
@@ -142,7 +158,7 @@ fn generate_record_component_type(
 
     // Convert fields
     for field in &record.fields {
-        let field_name = field.name.to_snake_case();
+        let field_name = field_name(field);
         generate_field_conversion(resolve, &field_name, &field.ty, output)?;
     }
     writeln!(output)?;
@@ -150,7 +166,7 @@ fn generate_record_component_type(
     // Return struct
     writeln!(output, "            Ok({} {{", rust_name)?;
     for field in &record.fields {
-        let field_name = field.name.to_snake_case();
+        let field_name = field_name(field);
         writeln!(output, "                {},", field_name)?;
     }
     writeln!(output, "            }})")?;
@@ -182,13 +198,13 @@ fn generate_record_component_type(
     writeln!(output, "            ).unwrap(),")?;
     writeln!(output, "            [")?;
     for field in &record.fields {
-        let field_name_snake = field.name.to_snake_case();
+        let field_name = field_name(field);
         let wit_name = &field.name;
         writeln!(
             output,
             "                (\"{}\", {}),",
             wit_name,
-            field_to_value(resolve, &format!("self.{}", field_name_snake), &field.ty)
+            field_to_value(resolve, &format!("self.{}", field_name), &field.ty)
         )?;
     }
     writeln!(output, "            ],")?;
@@ -847,7 +863,7 @@ fn generate_trait_method(
 
     writeln!(
         output,
-        "    fn {}({}) -> {};",
+        "    fn {}({}) -> anyhow::Result<{}>;",
         method_name,
         params.join(", "),
         return_ty
@@ -1058,7 +1074,7 @@ fn generate_function_registration(
     {
         writeln!(
             output,
-            "                        let result = ctx.data_mut().{}({});",
+            "                        let result = ctx.data_mut().{}({})?;",
             method_name,
             param_names.join(", ")
         )?;
@@ -1075,7 +1091,7 @@ fn generate_function_registration(
     } else {
         writeln!(
             output,
-            "                        ctx.data_mut().{}({});",
+            "                        ctx.data_mut().{}({})?;",
             method_name,
             param_names.join(", ")
         )?;

@@ -1208,7 +1208,14 @@ impl FuncType {
             .cloned()
             .ne(results.iter().map(crate::values::Value::ty))
         {
-            bail!("Incorrect result types.");
+            bail!(
+                "Incorrect result types, expected {:?}, but got {:?} instead.",
+                self.results(),
+                results
+                    .iter()
+                    .map(crate::values::Value::ty)
+                    .collect::<Vec<_>>()
+            );
         }
         Ok(())
     }
